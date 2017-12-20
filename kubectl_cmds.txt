@@ -1,0 +1,128 @@
+kubectl get pod
+- get information about running pods
+- verify if application pod is running
+
+kubectl describe pod <pod_name> - describe one pod
+
+kubectl expose pod <pod_name>  --port=xxx --name=name_of_service
+-Exposes the port of a pod (creates a service)
+- Then you can connect to your kubernetes cluster on that port
+- and then you can redirect to your pod.
+
+kubectl port-forward <pod_name> 8080   - port
+- Port forward the exposed pod port to your local machine.
+
+kubectl attach <pod_name>  -i
+-Attach to a pod -- to see what is really happening in that pod.
+--example: kubectl attach nodehelloworld.example.com
+----- This attaches to the running process.
+      If the process output a log you would see the log in the CLI
+
+kubectl exec <pod_name> -- command
+- execute a command on the pod -- this executes a command in your container
+- if you have multiple containers use -c to chose which container to execute upon
+- otherwise if not then it was just execute on the first container is chosen.
+--example: kubectl exec nodehelloworld.example.com -- ls /app
+                Dockerfile
+                docker-compose.yml
+                index-db.js
+                index.js
+                misc
+                node_modules
+                package.json
+
+TEST for data persistence:
+==========================
+kubectl exec nodehelloworld.example.com -- touch /app/test.txt
+        Then kill the pod and redeploy it
+        Then run: kubectl exec nodehelloworld.example.com -- ls /app
+          If persistence works then test.txt would still be there.
+
+kubectl label pods <pod_name>  mylabel=awesome
+- add lables to pods even after they are running.
+
+kubectl run -i --tty busybox --image=busybox --restart=Never -- sh
+Run a shell in a pod - useful  for debugging.
+This will create a new pod from  the  busybox image and you can connect to
+the other pod that maybe isn't working right.
+
+kubectl get proxy
+- in a second or sepearte terminal to create a proxy to forward comms in the cluster network. Terminate ctrl-c
+curl http://localhost:8001/version
+
+
+
+
+
+Get POD Name and store in variable - get the Pod name and query that pod directly through the proxy.
+
+export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+echo Name of the Pod: $POD_NAMEkubectl
+Make an HTTP request to the application running in that pod:
+
+curl http://localhost:8001/api/v1/proxy/namespaces/default/pods/$POD_NAME/
+
+View LOGS - Anything that the application would normally send to STDOUT
+=========
+kubectl log $POD_NAME
+
+Explore an App in the terminal
+In a separate terminal window start the proxy service to access the API.:
+kubectl proxy
+Get the Pod name and query that pod directly through the proxy.
+To get the Pod name and store it in the POD_NAME environment variable:
+export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+echo Name of the Pod: $POD_NAME
+
+To see the output of our application, run a curl request.
+curl http://localhost:8001/api/v1/proxy/namespaces/default/pods/$POD_NAME/
+
+Execute commands
+
+Access the pod containers via execute commands.
+kubectl exec
+Execute Cmds directly on a pod
+kubectl exec $POD_NAME env
+Test a pod
+Start a BASH Session on a pod
+kubectl exec -ti $POD_NAME bash
+Check if an app is running locally
+curl localhost:8080
+Exit a container:
+exit
+List current services
+kubectl get services
+Create a new service and expose it to external traffic - use the expose command with NodePort as parameter
+ (minikube does not support the LoadBalancer option yet)
+kubectl expose deployment/kubernetes-bootcamp --type="NodePort" --port 8080
+For Ceph:
+kubectl expose --name=kubernetes --type="NodePort" --port 8080
+Find out what port was opened externally (by the NodePort option)
+kubectl describe services/kubernetes-bootcamp  (name of deployment)
+Create an environment variable called NODE_PORT that has as value the Node port:
+export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template='{{(index .spec.ports 0).nodePort}}')
+echo NODE_PORT=$NODE_PORT
+Test that the app is exposed outside of the cluster using curl, the IP of the Node and the externally exposed port:
+curl host01:$NODE_PORT
+Labels
+Deployment creates a label for the Pods
+Use the describe deployment command you can see the name of the label:
+use this label to query the list of Pods
+kubectl get pods
+kubectl get pods -l run=kubernetes-bootcamp
+kubectl get services -l run=kubernetes-bootcamp
+
+Get the name of the Pod and store it in the POD_NAME environment variable:
+export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+echo Name of the Pod: $POD_NAME
+Apply label
+kubectl label pod $POD_NAME app=v1
+Check the label
+kubectl describe pods $POD_NAME
+Query list of PODS by label or metadata & key value pair
+kubectl get pods -l app=v1
+
+Misc-------------
+http://localhost:8001/api/v1/proxy/namespaces/default/pods/
+curl http://localhost:8001/api/v1/proxy/namespaces/default/pods/$POD_NAME/
+-----------

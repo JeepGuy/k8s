@@ -1,0 +1,4 @@
+Availability Zone (AZ): Each AWS region has multiple, isolated locations known as Availability Zones.
+AZs in the same region connect between them through low-latency links so there is fast and easy
+communication between them. Almost all AWS provided services replicate by default between
+AZs in the same region to offer high-availability.

@@ -1,0 +1,117 @@
+Service with a load balancer on AWS
+
+Need to be able to access the app from outside the clusterOn AWS - you can easily add
+an external load balancer.
+
+This AWS Load Balancer will route the traffic to the correct pod in kubernetes
+
+There are other solutions for other cloud providers that don't have load balancers
+
+- can build your ow haproxy or  Nginx load balancer in front of your cluster
+   OR
+- you can expose ports directly.
+
+Theory:
+Use a YAML pod file
+and yaml service definition
+
+First app behind  a AWS Load Balancer.
+
+ubuntu@ubuntu-xenial:~/docker-demo/kubernetes-course$
+ ls
+...first-app...
+
+ cat first-app/helloworld.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nodehelloworld.example.com
+  labels:
+    app: helloworld
+spec:
+  containers:
+  - name: k8s-demo
+    image: wardviaene/k8s-demo
+    ports:
+    - name: nodejs-port
+      containerPort: 3000
+
+cat first-app/helloworld-service.yml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: helloworld-service
+spec:
+  ports:
+  - port: 80
+    targetPort: nodejs-port
+    protocol: TCP
+  selector:
+    app: helloworld
+  type: LoadBalancer
+
+  1. Create up the kops cluster on AWS
+  kops create cluster
+     --name=kubernetes.jbrent.info
+     --state=s3://kops-state-ran0mstring1
+     --zones=us-east-1a
+     --node-count=2
+     --node-size=t2.micro
+     --master-size=t2.micro
+     --dns-zone=kubernetes.jbrent.info
+
+     kops create cluster --name=kubernetes.jbrent.info --state=s3://kops-state-ran0mstring1 --zones=us-east-1a --node-count=2 --node-size=t2.micro --master-size=t2.micro --dns-zone=kubernetes.jbrent.info
+
+
+
+2. Start the cluster:
+
+kops update cluster kubernetes.jbrent.info --yes  --state=s3://kops-state-ran0mstring1
+
+RESULTS:
+ I1217 21:39:09.658814    5271 executor.go:91] Tasks: 0 done / 73 total; 31 can run
+ I1217 21:39:10.026039    5271 executor.go:91] Tasks: 31 done / 73 total; 24 can run
+ I1217 21:39:10.571301    5271 executor.go:91] Tasks: 55 done / 73 total; 16 can run
+ I1217 21:39:10.942050    5271 executor.go:91] Tasks: 71 done / 73 total; 2 can run
+ I1217 21:39:10.995044    5271 executor.go:91] Tasks: 73 done / 73 total; 0 can run
+ I1217 21:39:10.995093    5271 dns.go:153] Pre-creating DNS records
+ I1217 21:39:11.185171    5271 update_cluster.go:248] Exporting kubecfg for cluster
+ kops has set your kubectl context to kubernetes.jbrent.info
+
+3. Download the Git repo to root (Instructor did it in the Vagrant Directory)
+4. Had to change the permission on the S3 bucket to open public access
+List objects and Write objects to everyone.
+(bad idea - must fix)
+5. Then loaded the yaml files.
+ubuntu@ubuntu-xenial:~/kubernetes-course/first-app$ kubectl create -f helloworld.yml
+pod "nodehelloworld.example.com" created
+ubuntu@ubuntu-xenial:~/kubernetes-course/first-app$ kubectl create -f helloworld-service.yml
+
+6. Goto EC2 page in AWS. Click on the one load balancer that should now be running.
+Should have all three instances running... Mine only show the two nodes.
+However the node port listeners should be mapped to the load balancer's port (80).
+7. Goto Rt53 > Hosted Zones - find your hosted zone and open it.
+8. In Rt53 click > create a new record set  > and create a new record by:
+   Name: helloworld (.kubernetes.jcbrent.com)
+   Alias = Yes
+   In dropdown: chose our ELB load balancer instance
+   Click create button at bottom right.
+9. Will redirect to Rt 53 Hosted zones page and the alias should show up.
+   helloworld.kubernetes.jbrent.info.
+   You can use this to go directly to your app...
+   !!!   It worked !!!
+10. Check in the load balancer (VPC - EC2) and you can see the load balancer redirects
+    the traffic fro port 80 to one of those three nodes on the instance port,
+    and then the traffic is redirected to our PODs.
+    If you check the security groups you'll see a new security group for the
+    load balancer.
+    Security group for Kubernetes ELB a81732263e45411e7838a12d8593dc78 (default/helloworld-service)
+    With port 80 http tcp PLUS a Custom ICMP Rule for
+    Destination Unreachable / fragmentation and DF flag set.
+    then you can click on the nodes you'll see all traffic open between
+    k8s and the load balancer.
+
+    IP Tables is the firewall in Linux.
+    The Service is equivalent to the load balancer.

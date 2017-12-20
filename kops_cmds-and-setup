@@ -1,0 +1,182 @@
+kops
+
+Preparing kops install
+
+Start new VM with Vagrant
+
+vagrant ssh to login
+
+github.com/kubernetes/kops  download the software
+
+sudo chmod =X kops-linux-amd64
+download python pip
+
+pip install awscli
+
+aws to test.
+
+Create an AWS Account
+
+Got AWS IAM - I dentity and access management.
+Users > Create new user call it kops
+Generate Access key
+Copy the key
+
+go back to shell of VM
+
+AWS configure
+Will ask for access
+and secret key (both printed when creating the user)
+
+aws configure
+AWS Access Key ID [****************QBWA]:
+AWS Secret Access Key [****************nYMX]:
+Default region name [None]:
+Default output format [None]:
+
+ls -ahl ~/.aws
+total 16K
+drwxrwxr-x 2 ubuntu ubuntu 4.0K Dec 11 19:49 .
+drwxr-xr-x 8 ubuntu ubuntu 4.0K Dec 17 23:35 ..
+-rw------- 1 ubuntu ubuntu   10 Dec 11 19:49 config
+-rw------- 1 ubuntu ubuntu  116 Dec 11 19:49 credentials
+
+Give Kops user permission... choose Admin so it has all roles/permissions
+
+IAM > Users > kops
+attach the admin access policy.
+
+Goto S3 in AWS
+
+Create a bucket.
+kops-state-<randomstring>
+in region us-east-1 (a = availability zone)
+
+Next set up Rt53 DNS domain...
+
+Enter subdomain in kops
+must create zone in Rt53 to manage the subdomain.
+
+set up access permissions? set to public in order to get kops cluster to work?
+-Yes set the S3 bucket I had to change the permission on the S3 bucket to open public access
+List objects and Write objects to everyone.
+- This propably means the kops user has to be added to the bucket. Experiment later.
+
+
+
+kops create cluster --name=kubernetes.jbrent.info --state=s3://kops-state-ran0mstring1 --zones=us-east-1a --node-count=2 --node-size=t2.micro --master-size=t2.micro --dns-zone=kubernetes.jbrent.info
+
+
+Suggestions:
+ * list clusters with: kops get cluster
+ * edit this cluster with: kops edit cluster kubernetes.jbrent.info
+ * edit your node instance group: kops edit ig --name=kubernetes.jbrent.info nodes
+ * edit your master instance group: kops edit ig --name=kubernetes.jbrent.info master-us-east-1a
+
+Finally configure your cluster with: kops update cluster kubernetes.jbrent.info --yes
+
+kops edit cluster kubernetes.jbrent.info   because it is on S3 this won't work.
+
+State Store: Required value: Please set the --state flag or export KOPS_STATE_STORE.
+A valid value follows the format s3://<bucket>.
+A s3 bucket is required to store cluster state information.
+
+kops edit cluster kubernetes.jbrent.info --state=s3://kops-state-ran0mstring1
+
+To start the cluster:
+---------------------
+
+kops update cluster kubernetes.jbrent.info --yes  --state=s3://kops-state-ran0mstring1
+
+Results:
+--------
+kops has set your kubectl context to kubernetes.jbrent.info
+
+Cluster is starting.  It should be ready in a few minutes.
+
+Suggestions:
+ * validate cluster: kops validate cluster
+ * list nodes: kubectl get nodes --show-labels
+ * ssh to the master: ssh -i ~/.ssh/id_rsa admin@api.kubernetes.jbrent.info
+The admin user is specific to Debian. If not using Debian please use the appropriate user based on your OS.
+ * read about installing addons: https://github.com/kubernetes/kops/blob/master/docs/addons.md
+
+kops validate cluster  --state=s3://kops-state-ran0mstring1
+
+
+cat ~/.kube/config
+results:
+
+server: https://api.kubernetes.jbrent.info
+  name: kubernetes.jbrent.info
+contexts:
+- context:
+    cluster: kubernetes.jbrent.info
+    user: kubernetes.jbrent.info
+  name: kubernetes.jbrent.info
+current-context: kubernetes.jbrent.info
+kind: Config
+preferences: {}
+
+users:
+- name: kubernetes.jbrent.info
+  user:
+truncated
+password: ZZVSbrqoifxmFl0SKvXgurgSHOLk60I3
+   username: admin
+- name: kubernetes.jbrent.info-basic-auth
+ user:
+   as-user-extra: {}
+   password: ZZVSbrqoifxmFl0SKvXgurgSHOLk60I3
+   username: admin
+
+
+=================================
+   run the minikube program
+
+   kubectl run hello-minikube --image=gcr.io/google_containers/echoserver:1.4 --port=8080
+
+   elastic load balancers in next lecture.
+
+   kubectl expose deployment hello-minikube --type=NodePort
+
+   ubuntu@ubuntu-xenial:~$ kubectl expose deployment hello-minikube --type=NodePort
+   service "hello-minikube" exposed
+   ubuntu@ubuntu-xenial:~$ kubectl get service
+   NAME             TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE
+   hello-minikube   NodePort    100.64.72.66   <none>        8080:32575/TCP   33s
+   kubernetes       ClusterIP   100.64.0.1     <none>        443/TCP          19m
+   ubuntu@ubuntu-xenial:~$
+
+   now if you want to access this application directly without the load balancer
+   you have to open port 32474/tcp in the firewall
+   goto vpc manage in AWS .. home > vpc
+
+   api.kubernetes.jbrent.info:32575
+
+   works...
+   CLIENT VALUES:
+   client_address=172.20.34.97
+   command=GET
+   real path=/
+   query=nil
+   request_version=1.1
+   request_uri=http://api.kubernetes.jbrent.info:8080/
+
+   SERVER VALUES:
+   server_version=nginx: 1.10.0 - lua: 10001
+
+   HEADERS RECEIVED:
+   accept=text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+   accept-encoding=gzip, deflate
+   accept-language=en-us
+   connection=keep-alive
+   host=api.kubernetes.jbrent.info:32575
+   upgrade-insecure-requests=1
+   user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/603.3.8 (KHTML, like Gecko) Version/10.1.2 Safari/603.3.8
+   BODY:
+   -no body in request-
+
+   Delete the resources so you don't pay for them
+   ----------------------------------------------
+   kops delete cluster --name kubernetes.jbrent.info  --state=s3://kops-state-ran0mstring1 --yes

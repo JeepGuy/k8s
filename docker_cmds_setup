@@ -1,0 +1,30 @@
+========
+docker hub images to use easily
+
+https://hub.docker.com/_/nginx/
+https://hub.docker.com/_/php/
+https://hub.docker.com/_/node
+https://hub.docker.com/_/rudy
+https://hub.docker.com/_/python
+https://hub.docker.com/_/openjdk
+
+
+docker hub
+login
+
+docker build command:   .docker
+docker run command:  docker run
+
+
+docker login (for image repo)
+
+wardviaene is his login in the pod definition
+
+jeepguy
+Jimsdockerhubacct1!
+Docker Pull Command:  docker pull jeepguy/kubernetes1course
+
+docker images   - list local
+
+docker tag 4ad18a9319b2 jeepguy/kubernetes1course
+tag the image:  docker tag 4ad18a9319b2 jeepguy/kubernetes1course:<tag_version_or_name>

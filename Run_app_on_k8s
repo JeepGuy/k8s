@@ -1,0 +1,48 @@
+Run_app_on_k8s
+
+1. Git clone app  (not in the ubuntu:xenial vagrant bos)
+2. cd to cloned directory
+3. kubctl get node  (minikube running)
+4. kubectl create -app first-app/helloworld.yml
+    - will download image
+    * How does Kubenetes know where to get the image?
+    image: wafdvianere/k8s-demo     no URL does kubernetes know to go to docker hub?
+5. kubectl get pod   # will show all the pods running
+6. kubectl describe pod <name>   #will show that this is pulling the image from the repo.
+7. TEST TO SEE IF the POD IS WORKING 1 (first way)
+    * View the pod by port-forward (to local machine)
+      Kubectl port-forward nodehelloworld.example.com 8081:3000
+      Will forward the pod port 3000 to the local machine on port 8081
+      # This window will stay open and you'll have to open a new terminal to do a curl command.
+8. curl localhost:8081
+      Will return HelloWorld! to cli.
+9. TEST TO SEE IF the POD IS WORKING 2 (second way)
+    * Create a service.
+    kubectl expose pod nodehelloworld.example.com --type=NodePort --name nodehelloworld-service
+    MUST GET IP ADDRESS of the K8s cluster to connect to:
+    On AWS: Just use the master node - will need to change the security groups
+    On Minikube:
+          minikube service nodehelloworld-service --url
+    -- will return the local url with port to connect to the service in a browser
+
+
+
+
+
+QUESTIONS:
+* How does Kubenetes know where to get the image?
+    image: wardvianere/k8s-demo     no URL does kubernetes know to go to docker hub?
+
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: nodehelloworld.example.com
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - name: k8s-demo
+        image: wardviaene/k8s-demo
+        ports:
+        - name: nodejs-port
+          containerPort: 3000

@@ -1,0 +1,32 @@
+Scaling PODS
+
+If you application is stateless you can horizontally scale it.
+Stateless = app doesn't keep any local files and keeps local sessions.
+            your application doesn't have state.
+
+All traditional Dbs are Stateful .
+  they have database files that can't be split over multiple instances.
+
+Most web applications can be made stateless...
+  Sessions management needs to be done outside the container.
+  can use Redis, or a database or MemCache (?)
+
+Any files that need to be saved can't be saved locally on the container.
+
+Volumes can run stateful apps
+  Those stateful apps can't horizontaly scale, but you can run them in a single
+  container and vertically scale (allocate more CPU/Memory/Disk).
+
+Scaling done via Relication controller
+ The Replication controller will ensure a specified number of
+ pod replicas will run at all times.
+ All pods created with the replica controller will automatically be replaced
+ if they fail, get deleted , or are terminated.
+
+ Using a replication controller is recommended if you want to make sure at least 1 pod
+ is always running, even after reboots.
+ - then run the replication controller with just 1 replica.
+
+ To run a replication controller change the pod defition to specify replicationController
+ and add the appropriate additional fields.
+ 

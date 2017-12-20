@@ -1,0 +1,80 @@
+k8s diagnosis
+
+TEST for data persistence:
+==========================
+kubectl exec nodehelloworld.example.com -- touch /app/test.txt
+        Then kill the pod and redeploy it
+        Then run: kubectl exec nodehelloworld.example.com -- ls /app
+          If persistence works then test.txt would still be there.
+
+
+kubectl get service
+
+NAME                     TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)          AGE
+hello-minikube           NodePort    10.0.0.175   <none>        8080:31094/TCP   33d
+kubernetes               ClusterIP   10.0.0.1     <none>        443/TCP          33d
+nodehelloworld-service   NodePort    10.0.0.247   <none>        3000:32330/TCP   2h
+
+kubectl describe service nodehelloworld-service
+
+Name:                     nodehelloworld-service
+Namespace:                default
+Labels:                   app=helloworld
+Annotations:              <none>
+Selector:                 app=helloworld
+Type:                     NodePort
+IP:                       10.0.0.247
+Port:                     <unset>  3000/TCP
+TargetPort:               3000/TCP
+NodePort:                 <unset>  32330/TCP
+Endpoints:                172.17.0.5:3000
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+Can connect to the endpoint from another pod
+  ---Endpoints:                172.17.0.5:3000
+   OR
+Use the nodeport because it is a static port
+  ---NodePort:                 <unset>  32330/TCP
+
+LAUNCH another pod with busybox:
+
+kubectl run -i --tty busybox --image=busybox --restart=Never -- sh
+
+      If you don't see a command prompt, try pressing enter.
+      / #
+
+Then you can execute commands into the cluster...
+      kubectl run -i --tty busybox --image=busybox --restart=Never -- sh
+      If you don't see a command prompt, try pressing enter.
+      / # ls
+      RESULTS: bin   dev   etc   home  proc  root  sys   tmp   usr   var
+      /  #
+
+      / # curl
+      sh: curl: not found
+      / #
+
+      to kill the subybox pod:  kubectl delete pod -l run=busybox
+
+      kubectl run -i --tty busybox --image=busybox --restart=Never -- sh
+      If you don't see a command prompt, try pressing enter.
+      / # telnet 172.17.0.5 3000
+      GET /
+
+      Stuck no results...
+
+
+ONE ANSWER
+Edward — Instructor  · 3 months ago
+Hi Mohan,
+
+Check firewall logs if possible, check your systemd logs if you're using systemd,
+check flannel logs (probably also in systemd). There's not really a list of commands
+ or procedure for things like this, you'll just have to keep debugging every single
+  component until you find what's blocking it. If you're on a enterprise network,
+  it's probably something blocking ports between the instances. Make sure you have
+  port 8285 udp open for network encapsulation.
+
+-Edward
