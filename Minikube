@@ -1,0 +1,95 @@
+minikube
+
+- Easy to run Kubernetes locally.
+- Runs a single node Kubernetes cluster
+- For users who want to just test it out or use if for development.
+- Cannot spin up on a production cluster. It is just a one node machine with
+  no high availability.
+
+Works on Windows Linus and MacOS
+- Requires Virtualization Software installed to run minikube.
+- VirtualBox is free and can be downloaded from virtualbox.org
+- Minikube can be downloaded from github.com/kubenetes/minikube
+- to launch your cluster you need to do so in the terminal.
+
+$ minikube start
+
+$ minikube stop #stops the minkube cluster.
+
+Install
+-------
+in terminal curl the install location.
+chmod the execution bit ... chmod +x minikube
+mv the package directory to /usr/local/bin
+must install kubectl to use... see instructions at kubectl.org.
+
+Check kubectl config file.
+cat ~/.kube/config
+ - it should be configured by the installer.
+
+ To run:
+
+  minikube run hello-minikube --image=gcr.io/google_containersechoserver:1.4 --port=8080
+
+  stdout= deployment "hello-minikube" created
+Create a service:
+-----------------
+kubectl expose deployment hello-minikube --type=NodePort
+   - stdout: service "hello-minikube" created
+
+minikube service hello-minikube --url
+ - stdout: http://192.168.99.100:31094
+
+Can access the url on your local machine in a browser:
+http://192.168.99.100:31094
+
+Browser Resutls:
+CLIENT VALUES:
+client_address=172.17.0.1
+command=GET
+real path=/
+query=nil
+request_version=1.1
+request_uri=http://192.168.99.100:8080/
+
+SERVER VALUES:
+server_version=nginx: 1.10.0 - lua: 10001
+
+HEADERS RECEIVED:
+accept=text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+accept-encoding=gzip, deflate
+accept-language=en-us
+connection=keep-alive
+host=192.168.99.100:31094
+upgrade-insecure-requests=1
+user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/603.3.8 (KHTML, like Gecko) Version/10.1.2 Safari/603.3.8
+BODY:
+-no body in request-
+
+Additional query:
+
+http://192.168.99.100:31094/test123
+
+Browser Results:
+
+CLIENT VALUES:
+client_address=172.17.0.1
+command=GET
+real path=/test123
+query=nil
+request_version=1.1
+request_uri=http://192.168.99.100:8080/test123
+
+SERVER VALUES:
+server_version=nginx: 1.10.0 - lua: 10001
+
+HEADERS RECEIVED:
+accept=text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+accept-encoding=gzip, deflate
+accept-language=en-us
+connection=keep-alive
+host=192.168.99.100:31094
+upgrade-insecure-requests=1
+user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/603.3.8 (KHTML, like Gecko) Version/10.1.2 Safari/603.3.8
+BODY:
+-no body in request-

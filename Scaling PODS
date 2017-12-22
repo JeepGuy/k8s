@@ -17,7 +17,7 @@ Volumes can run stateful apps
   Those stateful apps can't horizontaly scale, but you can run them in a single
   container and vertically scale (allocate more CPU/Memory/Disk).
 
-Scaling done via Relication controller
+Scaling done via Replication controller
  The Replication controller will ensure a specified number of
  pod replicas will run at all times.
  All pods created with the replica controller will automatically be replaced
@@ -29,4 +29,3 @@ Scaling done via Relication controller
 
  To run a replication controller change the pod defition to specify replicationController
  and add the appropriate additional fields.
- 
