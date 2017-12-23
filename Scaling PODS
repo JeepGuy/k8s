@@ -17,7 +17,7 @@ Volumes can run stateful apps
   Those stateful apps can't horizontally scale, but you can run them in a single
   container and vertically scale (allocate more CPU/Memory/Disk).
 
-  Check out https://12factor.net or Edward Viene's courses Learn Dv/Ops or 
+  Check out https://12factor.net or Edward Viene's courses Learn Dv/Ops or
   Scaling apps on-premise and in the cloud.
 
 Scaling done via Replication controller
@@ -34,3 +34,105 @@ Scaling done via Replication controller
  and add the appropriate additional fields.
 
  Demo section:
+
+ apiVersion: v1
+ kind: ReplicationController   ############ changed over deployment
+ metadata:
+   name: helloworld-controller
+ spec:
+   replicas: 2
+   selector:
+     app: helloworld
+   template:     ############ added - a pod definition...
+     metadata:
+       labels:
+         app: helloworld
+     spec:                     # pod sepcification.... same as deployment
+       containers:
+       - name: k8s-demo
+         image: wardviaene/k8s-demo
+         ports:
+         - name: nodejs-port
+           containerPort: 3000
+
+kubectl get nodes (check to see if minikube is up)
+
+kubectl create -f kubernetes-course/replication-controller/helloworld-repl-controller.yml
+
+replicationcontroller "helloworld-controller" created
+
+kubectl get pods
+NAME                              READY     STATUS    RESTARTS   AGE
+hello-minikube-5bc754d4cd-mj988   1/1       Running   4          39d
+helloworld-controller-9cdm2       1/1       Running   0          40s
+nodehelloworld.example.com        1/1       Running   2          5d
+
+kubectl delete deployments --all
+deployment "hello-minikube" deleted
+
+kubectl delete pod nodehelloworld.example.com
+pod "nodehelloworld.example.com" deleted
+
+kubectl get pods
+NAME                          READY     STATUS        RESTARTS   AGE
+helloworld-controller-9cdm2   1/1       Running       0          4m
+helloworld-controller-v5867   1/1       Running       0          7s
+nodehelloworld.example.com    1/1       Terminating   2          5d
+
+kubectl describe pod helloworld-controller-9cdm2
+
+Name:           helloworld-controller-9cdm2
+Namespace:      default
+Node:           minikube/192.168.99.100
+Start Time:     Fri, 22 Dec 2017 22:12:48 -0500
+etc...
+
+will redeploy a new pod if one is killed
+kubectl delete pod helloworld-controller-9cdm2
+
+kubectl get pod
+NAME                          READY     STATUS        RESTARTS   AGE
+helloworld-controller-9cdm2   1/1       Terminating   0          12m
+helloworld-controller-v5867   1/1       Running       0          7m
+helloworld-controller-wcm9g   1/1       Running       0          18s
+
+see the new pod is created instantly.
+
+======
+
+Manual scaling not in the yaml files
+
+
+
+kubectl scale --replicas=4 -f kubernetes-course/replication-controller/helloworld-repl-controller.yml
+replicationcontroller "helloworld-controller" scaled
+Jamess-MBP-2:kubernetes JeepGuy$ kubectl get pod
+NAME                          READY     STATUS    RESTARTS   AGE
+helloworld-controller-lx7mj   1/1       Running   0          7s
+helloworld-controller-v5867   1/1       Running   0          10m
+helloworld-controller-vjkqt   1/1       Running   0          7s
+helloworld-controller-wcm9g   1/1       Running   0          3m
+
+kubectl
+
+kubectl get rc
+NAME                    DESIRED   CURRENT   READY     AGE
+helloworld-controller   4         4         4         16m
+Jamess-MBP-2:kubernetes JeepGuy$ kubectl scale --replicas=1 rc/helloworld-controller
+replicationcontroller "helloworld-controller" scaled
+Jamess-MBP-2:kubernetes JeepGuy$ kubectl get pods
+NAME                          READY     STATUS        RESTARTS   AGE
+helloworld-controller-lx7mj   1/1       Terminating   0          1m
+helloworld-controller-v5867   1/1       Running       0          11m
+helloworld-controller-vjkqt   1/1       Terminating   0          1m
+helloworld-controller-wcm9g   1/1       Terminating   0          4m
+
+
+kubectl delete rc/helloworld-controller
+replicationcontroller "helloworld-controller" deleted
+Jamess-MBP-2:kubernetes JeepGuy$ kubectl get pods
+NAME                          READY     STATUS        RESTARTS   AGE
+helloworld-controller-lx7mj   0/1       Terminating   0          2m
+helloworld-controller-v5867   1/1       Terminating   0          12m
+helloworld-controller-vjkqt   0/1       Terminating   0          2m
+helloworld-controller-wcm9g   0/1       Terminating   0          5m
