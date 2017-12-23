@@ -17,3 +17,170 @@ Create a service will create an endpoint for your pods(s)
  - a NodePort: a port that is the same on each nodes that is also reachable externally.
  - a LoadBalancer: a LoadBalancer created by the cloud provider that will
    route external traffic to every node on the NodePort (ELB on AWS)
+
+The above options only allow you to create virtual IPs or ports
+
+By Default: Service can only run between ports 3000-32767... unlesss you change the
+settings in the kube-apiservicer init scripts by adding
+--service-node-port-range= argument
+
+Can use DNS names
+ - ExternalName can provide a DNS name for the service
+ - The only works when the DNS add-n is enabled
+====================
+ apiVersion: v1
+ kind: Service
+ metadata:
+   name: helloworld-service
+ spec:
+   ports:
+   - port: 31001       ###
+     nodePort: 31001   ### Don't have to specify then it will be a random port.
+                       Will only be created if this port is available.
+     targetPort: nodejs-port   ### this is the type that was defined in the pod is 3000
+     protocol: TCP
+   selector:
+     app: helloworld   ### This will be the service for the Pod that has the app helloworld
+   type: NodePort      ###
+
+============
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nodehelloworld.example.com
+  labels:
+    app: helloworld
+spec:
+  containers:
+  - name: k8s-demo
+    image: wardviaene/k8s-demo
+    ports:
+    - name: nodejs-port        ### mathes the targetPort in the service object
+      containerPort: 3000
+==================
+
+kubectl get pod
+NAME                         READY     STATUS         RESTARTS   AGE
+nodehelloworld.example.com   0/1       ErrImagePull   0          26s
+
+ kubectl create -f ../first-app/helloworld.yml
+Error from server (AlreadyExists): error when creating "../first-app/helloworld.yml": pods "nodehelloworld.example.com" already exists
+
+JeepGuy$ kubectl get pods
+NAME                         READY     STATUS    RESTARTS   AGE
+nodehelloworld.example.com   1/1       Running   0          47s
+
+kubectl describe nodehelloworld.example.com
+the server doesn't have a resource type "nodehelloworld" in group "example.com"
+
+
+ JeepGuy$ kubectl describe pod nodehelloworld.example.com
+
+Name:         nodehelloworld.example.com
+Namespace:    default
+Node:         minikube/192.168.99.100
+Start Time:   Sat, 23 Dec 2017 09:35:39 -0500
+Labels:       app=helloworld                  ################### label
+Annotations:  <none>
+Status:       Running
+IP:           172.17.0.3
+Containers:
+  k8s-demo:
+    Container ID:   docker://4dc2c09bb6199c62e89347f31b6d400ccdf239e19dc39b5318138bfc173e7429
+    Image:          wardviaene/k8s-demo
+    Image ID:       docker-pullable://wardviaene/k8s-demo@sha256:2c050f462f5d0b3a6430e7869bcdfe6ac48a447a89da79a56d0ef61460c7ab9e
+    Port:           3000/TCP
+    State:          Running
+      Started:      Sat, 23 Dec 2017 09:36:07 -0500
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-n9twd (ro)
+Conditions:
+  Type           Status
+  Initialized    True
+  Ready          True
+  PodScheduled   True
+Volumes:
+  default-token-n9twd:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-n9twd
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     <none>
+Events:
+  Type     Reason                 Age              From               Message
+  ----     ------                 ----             ----               -------
+  Normal   Scheduled              2m               default-scheduler  Successfully assigned nodehelloworld.example.com to minikube
+  Normal   SuccessfulMountVolume  2m               kubelet, minikube  MountVolume.SetUp succeeded for volume "default-token-n9twd"
+  Warning  Failed                 2m               kubelet, minikube  Failed to pull image "wardviaene/k8s-demo": rpc error: code = Unknown desc = Error response from daemon: Get https://registry-1.docker.io/v2/: dial tcp: lookup registry-1.docker.io on 10.0.2.3:53: read udp 10.0.2.15:47319->10.0.2.3:53: i/o timeout
+  Warning  FailedSync             2m (x2 over 2m)  kubelet, minikube  Error syncing pod
+  Normal   BackOff                2m               kubelet, minikube  Back-off pulling image "wardviaene/k8s-demo"
+  Normal   Pulling                1m (x2 over 2m)  kubelet, minikube  pulling image "wardviaene/k8s-demo"
+  Normal   Pulled                 1m               kubelet, minikube  Successfully pulled image "wardviaene/k8s-demo"
+  Normal   Created                1m               kubelet, minikube  Created container
+  Normal   Started                1m               kubelet, minikube  Started container
+
+
+  kubectl create -f  ../first-app/helloworld-nodeport-service.yml
+  service "helloworld-service" created
+
+  kubectl get service
+  NAME                     TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)           AGE
+  hello-minikube           NodePort    10.0.0.175   <none>        8080:31094/TCP    39d
+  helloworld-deployment    NodePort    10.0.0.97    <none>        3000:31270/TCP    9h
+  helloworld-service       NodePort    10.0.0.53    <none>        31001:31001/TCP   44s
+  kubernetes               ClusterIP   10.0.0.1     <none>        443/TCP           39d
+  nodehelloworld-service   NodePort    10.0.0.247   <none>        3000:32330/TCP    5d
+
+  clean up:
+
+kubectl delete service --all
+
+service "hello-minikube" deleted
+service "helloworld-deployment" deleted
+service "helloworld-service" deleted
+service "kubernetes" deleted
+service "nodehelloworld-service" deleted
+
+kubectl create -f  ../first-app/helloworld-nodeport-service.yml
+service "helloworld-service" created
+
+kubectl get service
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)           AGE
+helloworld-service   NodePort    10.0.0.176   <none>        31001:31001/TCP   20s
+kubernetes           ClusterIP   10.0.0.1     <none>        443/TCP           37s
+
+minikube service helloworld-service --url
+http://192.168.99.100:31001
+
+kubectl get service
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)           AGE
+helloworld-service   NodePort    10.0.0.176   <none>        31001:31001/TCP   2m
+kubernetes           ClusterIP   10.0.0.1     <none>        443/TCP           3m
+
+The ip that can be used to connect to the app.
+http://192.168.99.100:31001
+
+kubectl get services helloworld-service
+NAME                 TYPE       CLUSTER-IP   EXTERNAL-IP   PORT(S)           AGE
+helloworld-service   NodePort   10.0.0.176   <none>        31001:31001/TCP   5m
+
+
+curl http://192.168.99.100:31001
+Hello World!Jamess-MBP-2:deployment JeepGuy$
+
+ 
+
+
+
+
+
+
+
+
+
+.
