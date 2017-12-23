@@ -1,0 +1,23 @@
+The replica set is the next generation Replication Controller
+
+- Supports a new selector that can do selection based on FILTERING
+according to set of values
+   * e.g. "environment" either "dev" or "qa" etc.
+   Relication Controller can only do "environment=="dev"
+   The set can do more conplex matching.
+   * Not only based on equality (quantity) like the Replication Controller
+
+This Relica Set that than the Replication Controller, is used by the Deployment
+Object.
+
+
+Deployments
+
+A deployment declaration in Kubenetes allows you to do app deployments and updates.
+
+When using the deployment object you define the STATE of the your application.
+ * Kubernetes will then make sure the clusters matches your desired state.
+
+Just using the replciation controller or replication set might be cumbersone to
+deploy apps... There is too much manual labor to adjust the state.
+- updates, rollbacks etc...

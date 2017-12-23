@@ -1,0 +1,19 @@
+services
+
+Pods are dynamic - come and go
+- Using a Replication Controller, pods are terminated and created during scaling ops
+- Using Deployments, when updating the image version, pods are teminated and new pods
+  take the place of older pods.
+
+Pods should never be accessed directly because of their dynamic nature, they should
+be accessed through a Service.
+
+A service is the logical bridge between the "mortal" pods and other services or end-users.
+
+Kubectl expose - creates a Service for your pod so it can be accessed externally.
+
+Create a service will create an endpoint for your pods(s)
+ - a Cluster IP: a virtual IP address only reachable from within the cluster (default behavior)
+ - a NodePort: a port that is the same on each nodes that is also reachable externally.
+ - a LoadBalancer: a LoadBalancer created by the cloud provider that will
+   route external traffic to every node on the NodePort (ELB on AWS)

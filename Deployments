@@ -1,0 +1,273 @@
+The replica set is the next generation Replication Controller
+
+- Supports a new selector that can do selection based on FILTERING
+according to set of values
+   * e.g. "environment" either "dev" or "qa" etc.
+   Relication Controller can only do "environment=="dev"
+   The set can do more conplex matching.
+   * Not only based on equality (quantity) like the Replication Controller
+
+This Relica Set that than the Replication Controller, is used by the Deployment
+Object.
+
+
+Deployments
+
+A deployment declaration in Kubenetes allows you to do app deployments and updates.
+
+When using the deployment object you define the STATE of the your application.
+ * Kubernetes will then make sure the clusters matches your desired state.
+
+Just using the replciation controller or replication set might be cumbersone to
+deploy apps... There is too much manual labor to adjust the state.
+- updates, rollbacks etc...
+
+The Deployment object is much easier to use and gives you more possibilities.
+ - Create a deployment (deply an app)
+ - Update a deployment
+ - Do rolling updates (zero downtime deployments)
+ - Pause / Resume a deployment (e.g. roll-out to only a certian percentage of the
+   running pods.)
+
+Useful Kubectl commands
+
+kubectl get deployments   Get info on current deployments
+
+kubectl get rs   - get info abotu the replica sets
+
+kubectl get pods --show labels   Get pods and show the labels attached to those pods.
+
+kubectl rollout status deployment/helloworld-deployment   - get deployment status
+
+kubectl set image deployment/helloworld-deployment k8s-demo=k8s-demo2
+                                 - run the k8s-demo with the image label version2
+
+kubectl  edit deployment/helloworld-deployment   - Edit the deployment object
+
+ kubectl rollout status deployment/helloworld-deployment - get the status of the rollout
+
+kubectl rollout history deployment/helloworld-deployment - get the rollout history
+              - useful for rollback to a specific version
+
+kubectl rollout undo deployment/helloworld-deployment - rollback to previous version
+
+kubctl rollout undo deployment/helloworld-deployment --to-revision=N
+          -roll back to a specific version.
+
+=========
+cat deployment/helloworld.yml
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-deployment
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - name: k8s-demo
+        image: wardviaene/k8s-demo
+        ports:
+        - name: nodejs-port
+          containerPort: 3000
+
+kubectl create -f deployment/helloworld.yml
+deployment "helloworld-deployment" created
+
+  kubectl get deployments
+NAME                    DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+helloworld-deployment   3         3         3            3           12s
+
+
+------------
+kubectl get rs   (replica sets)
+NAME                               DESIRED   CURRENT   READY     AGE
+helloworld-deployment-57949f6b74   3         3         3         1m
+
+kubectl get pods
+NAME                                     READY     STATUS    RESTARTS   AGE
+helloworld-deployment-57949f6b74-7glr8   1/1       Running   0          2m
+helloworld-deployment-57949f6b74-pp79k   1/1       Running   0          2m
+helloworld-deployment-57949f6b74-rwrgm   1/1       Running   0          2m
+
+
+kubectl get pods --show-labels
+NAME                                     READY     STATUS    RESTARTS   AGE       LABELS
+helloworld-deployment-57949f6b74-7glr8   1/1       Running   0          3m        app=helloworld,pod-template-hash=1350592630
+helloworld-deployment-57949f6b74-pp79k   1/1       Running   0          3m        app=helloworld,pod-template-hash=1350592630
+helloworld-deployment-57949f6b74-rwrgm   1/1       Running   0          3m        app=helloworld,pod-template-hash=1350592630
+
+
+kubectl expose deployment helloworld-deployment --type=NodePort
+service "helloworld-deployment" exposed   (service created)
+
+kubectl describe service helloworld-deployment
+Name:                     helloworld-deployment
+Namespace:                default
+Labels:                   app=helloworld
+Annotations:              <none>
+Selector:                 app=helloworld
+Type:                     NodePort
+IP:                       10.0.0.97
+Port:                     <unset>  3000/TCP
+TargetPort:               3000/TCP
+NodePort:                 <unset>  31270/TCP
+Endpoints:                172.17.0.3:3000,172.17.0.4:3000,172.17.0.6:3000
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+Here the port 31270 has been exposed so we can connect to it
+
+to get the URL
+minikube service helloworld-deployment --url
+
+http://192.168.99.100:31270   - then curl this url
+
+curl http://192.168.99.100:31270
+Hello World!Jamess-MBP-2:kubernetes-course JeepGuy$
+
+kubectl set image deployment/helloworld-deployment k8s-demo=wardviaene/k8s-demo:2
+
+deployment "helloworld-deployment" image updated
+
+kubectl set image deployment/helloworld-deployment k8s-demo=wardviaene/k8s-demo:2
+deployment "helloworld-deployment" image updated
+
+curl http://192.168.99.100:31270
+Hello World v2!Jamess-MBP-2:kubernetes-course JeepGuy$     added v2 so its the new image
+
+
+Jamess-MBP-2:kubernetes-course JeepGuy$ kubectl get pods
+NAME                                     READY     STATUS        RESTARTS   AGE
+helloworld-deployment-57949f6b74-7glr8   0/1       Terminating   0          22m
+helloworld-deployment-57949f6b74-pp79k   0/1       Terminating   0          22m
+helloworld-deployment-57949f6b74-rwrgm   0/1       Terminating   0          22m
+helloworld-deployment-96f9dc578-5wcp6    1/1       Running       0          56s
+helloworld-deployment-96f9dc578-qz6r9    1/1       Running       0          51s
+helloworld-deployment-96f9dc578-vl5bp    1/1       Running       0          56s
+
+
+
+kubectl rollout history deployment/helloworld-deployment
+deployments "helloworld-deployment"
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+kubectl rollout undo deployment/helloworld-deployment
+deployment "helloworld-deployment" rolled back
+
+
+kubectl rollout status deployment/helloworld-deployment
+deployment "helloworld-deployment" successfully rolled out
+
+kubectl get pods
+NAME                                     READY     STATUS    RESTARTS   AGE
+helloworld-deployment-57949f6b74-mrxxb   1/1       Running   0          1m
+helloworld-deployment-57949f6b74-shgkf   1/1       Running   0          1m
+helloworld-deployment-57949f6b74-wqxc5   1/1       Running   0          1m
+Jamess-MBP-2:kubernetes-course JeepGuy$ curl http://192.168.99.100:31270
+Hello World!Jamess-MBP-2:kubernetes-course JeepGuy$
+
+kubectl rollout history deployment/helloworld-deployment
+deployments "helloworld-deployment"
+REVISION  CHANGE-CAUSE
+2         <none>
+3         <none>
+
+By default only two version are shown...
+
+kubectl edit deployment/helloworld-deployment
+
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "3"
+  creationTimestamp: 2017-12-23T04:33:32Z
+  generation: 3
+  labels:
+    app: helloworld
+  name: helloworld-deployment
+  namespace: default
+  resourceVersion: "33280"
+  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/helloworld-deployment
+  uid: 6e7aee89-e79a-11e7-9ced-080027875e97
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+"/var/folders/ky/6cx9w84d76qdl8dsmpy3jq7h0000gn/T/kubectl-edit-fplln.yaml" 63L, 1713C
+
+add revision history limit
+==========================
+
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "3"
+  creationTimestamp: 2017-12-23T04:33:32Z
+  generation: 3
+  labels:
+    app: helloworld
+  name: helloworld-deployment
+  namespace: default
+  resourceVersion: "33280"
+  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/helloworld-deployment
+  uid: 6e7aee89-e79a-11e7-9ced-080027875e97
+spec:
+  replicas: 3
+  revisionHistoryLimit: 100
+  selector:
+
+  kubectl edit deployment/helloworld-deployment
+  deployment "helloworld-deployment" edited
+
+
+  kubectl set image deployment/helloworld-deployment k8s-demo=wardviaene/k8s-demo:2
+  deployment "helloworld-deployment" image updated
+
+kubectl rollout history deployment/helloworld-deployment
+deployments "helloworld-deployment"
+REVISION  CHANGE-CAUSE
+3         <none>
+4         <none>
+
+kubectl set image deployment/helloworld-deployment k8s-demo=wardviaene/k8s-demo
+deployment "helloworld-deployment" image updated
+
+kubectl rollout history deployment/helloworld-deployment
+deployments "helloworld-deployment"
+REVISION  CHANGE-CAUSE
+4         <none>
+5         <none>
+
+kubectl rollout undo deployment/helloworld-deployment --to-revision=3
+deployment "helloworld-deployment" skipped rollback
+(DeploymentRollbackRevisionNotFound: Unable to find the revision to rollback to.)
+Jamess-MBP-2:kubernetes-course
+
+kubectl rollout undo deployment/helloworld-deployment --to-revision=4
+deployment "helloworld-deployment" rolled back
+
+check out why this didn't work:
+https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+
+
+
+.
