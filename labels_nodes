@@ -1,0 +1,163 @@
+Labels
+
+Labels are key/value pairs that can be attached to objects
+- Labels are like tags in AWS or other cloud providers, used to tag resources
+
+Can label you objects, for instance your pod, following an organizational structure
+- Key: environment - Value: dev/staging/qa/port-forward
+- Key: department - Value: engineering /finance/ etc
+
+metadata:
+ name: nodehelloworld.example.command
+ labels:
+   app:helloworld
+
+Labels are not unique, and multiple labels can be added to one object
+
+Once labels are attached to an object, you can use filters to narrow down results:
+   - This is called Label Selectors
+
+Using Label Selectors, you can use matching expressions to match lablels
+   - For instance a particular pod can only run on a node labeled
+    with "environment" equals development.
+  - or more complex matching: "env" in "dev" or "qa"
+
+Node Labels
+
+Can use labels to tag nodes
+Once nodes are tagged, you can use label selectors to allow pods to only run
+ on specific nodes:
+
+ First- tag the nodes - add a label (tag) or multiple labels to your nodes:
+
+   kubectl label nodes node1 hardware-high-spec
+   kubectl label nodes node2 hardware-low-spec
+
+ Second: add a pod that uses those labels.
+  - add a nodeSelector to you pod configuration or a pod
+ template within a deployment.
+
+ apiVersion: v1
+ kind: Pod
+ metadata:
+   name: nodehelloworld.example.com
+   labels:
+     app: helloworld
+ spec:
+   containers:
+   - name: k8s-demo
+     image: wardviaene/k8s-demo
+     ports:
+     - name: nodejs-port
+       containerPort: 3000
+     nodeSelector:             ##### add the node selector to the pod definition
+      hardware: high-spec      ##### This pod will only run on pods labeled high-spec
+
+Demo
+====
+
+cat deployment/helloworld-nodeselector.yml
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-deployment
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec:                  ### pod specification section
+      containers:
+      - name: k8s-demo
+        image: wardviaene/k8s-demo
+        ports:
+        - name: nodejs-port
+          containerPort: 3000
+      nodeSelector:            ### node selector section
+        hardware: high-spec
+
+kubectl get nodes --show-labels
+NAME       STATUS    ROLES     AGE       VERSION   LABELS
+minikube   Ready     <none>    40d       v1.8.0    beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=minikube
+Jamess-MBP-2:kubernetes-course JeepGuy$ kubectl create -f deployment/helloworld-nodeselector.yml
+
+deployment "helloworld-deployment" created
+
+kubectl get deployments
+NAME                    DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+helloworld-deployment   3         3         3            0           11m
+
+
+ kubectl get pods
+NAME                                     READY     STATUS    RESTARTS   AGE
+helloworld-deployment-84bb87c79c-8rjtl   0/1       Pending   0          11m
+helloworld-deployment-84bb87c79c-k5vwr   0/1       Pending   0          11m
+helloworld-deployment-84bb87c79c-x2kvc   0/1       Pending   0          11m
+nodehelloworld.example.com               1/1       Running   0          12h
+Jamess-MBP-2:kubernetes-course JeepGuy$
+
+wouldn't deploy as the node selector won't allow the pods to be deployed to a node
+without the correct filter /selector
+
+
+kubectl describe pod helloworld-deployment-84bb87c79c-8rjtl
+
+Name:           helloworld-deployment-84bb87c79c-8rjtl
+Namespace:      default
+Node:           <none>
+Labels:         app=helloworld
+                pod-template-hash=4066437357
+Annotations:    kubernetes.io/created-by={"kind":"SerializedReference","apiVersion":"v1","reference":{"kind":"ReplicaSet","namespace":"default","name":"helloworld-deployment-84bb87c79c","uid":"42fe57e7-e853-11e7-9ced...
+Status:         Pending
+IP:
+Created By:     ReplicaSet/helloworld-deployment-84bb87c79c
+Controlled By:  ReplicaSet/helloworld-deployment-84bb87c79c
+Containers:
+  k8s-demo:
+    Image:        wardviaene/k8s-demo
+    Port:         3000/TCP
+    Environment:  <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-n9twd (ro)
+Conditions:
+  Type           Status
+  PodScheduled   False
+Volumes:
+  default-token-n9twd:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-n9twd
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  hardware=high-spec
+Tolerations:     <none>
+Events:
+  Type     Reason            Age                 From               Message
+  ----     ------            ----                ----               -------
+  Warning  FailedScheduling  10m (x15 over 13m)  default-scheduler  No nodes are available that match all of the predicates: MatchNodeSelector (1).
+
+So label the pod
+
+kubectl label nodes minikube hardware=high-spec
+node "minikube" labeled
+
+kubectl describe one pod
+
+---Now it will run because the label is correct.
+
+Events:
+  Type     Reason                 Age                 From               Message
+  ----     ------                 ----                ----               -------
+  Warning  FailedScheduling       12m (x22 over 17m)  default-scheduler  No nodes are available that match all of the predicates: MatchNodeSelector (1).
+  Normal   Scheduled              11m                 default-scheduler  Successfully assigned helloworld-deployment-84bb87c79c-k5vwr to minikube
+  Normal   SuccessfulMountVolume  11m                 kubelet, minikube  MountVolume.SetUp succeeded for volume "default-token-n9twd"
+  Normal   Pulling                11m                 kubelet, minikube  pulling image "wardviaene/k8s-demo"
+  Normal   Pulled                 11m                 kubelet, minikube  Successfully pulled image "wardviaene/k8s-demo"
+  Normal   Created                11m                 kubelet, minikube  Created container
+  Normal   Started                11m                 kubelet, minikube  Started container
+
+
+
+
+.
