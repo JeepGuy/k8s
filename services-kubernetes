@@ -173,7 +173,52 @@ helloworld-service   NodePort   10.0.0.176   <none>        31001:31001/TCP   5m
 curl http://192.168.99.100:31001
 Hello World!Jamess-MBP-2:deployment JeepGuy$
 
- 
+kubectl describe svc
+Name:                     helloworld-service
+Namespace:                default
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=helloworld
+Type:                     NodePort
+IP:                       10.0.0.176
+Port:                     <unset>  31001/TCP
+TargetPort:               %!d(string=nodejs-port)/TCP
+NodePort:                 <unset>  31001/TCP
+Endpoints:                172.17.0.3:3000
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:              kubernetes
+Namespace:         default
+Labels:            component=apiserver
+                   provider=kubernetes
+Annotations:       <none>
+Selector:          <none>
+Type:              ClusterIP
+IP:                10.0.0.1
+Port:              https  443/TCP
+TargetPort:        8443/TCP
+Endpoints:         10.0.2.15:8443
+Session Affinity:  ClientIP
+Events:            <none>
+
+kubectl describe svc helloworld-service
+Name:                     helloworld-service
+Namespace:                default
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=helloworld
+Type:                     NodePort
+IP:                       10.0.0.176
+Port:                     <unset>  31001/TCP
+TargetPort:               %!d(string=nodejs-port)/TCP
+NodePort:                 <unset>  31001/TCP
+Endpoints:                172.17.0.3:3000
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
 
 
 
