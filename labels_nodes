@@ -81,7 +81,8 @@ spec:
 kubectl get nodes --show-labels
 NAME       STATUS    ROLES     AGE       VERSION   LABELS
 minikube   Ready     <none>    40d       v1.8.0    beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=minikube
-Jamess-MBP-2:kubernetes-course JeepGuy$ kubectl create -f deployment/helloworld-nodeselector.yml
+
+kubectl create -f deployment/helloworld-nodeselector.yml
 
 deployment "helloworld-deployment" created
 

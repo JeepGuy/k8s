@@ -1,0 +1,243 @@
+HEALTHCHECKS
+
+If the app malfunctions, the podd and container can stll run, the applicatioin might not work anymore.
+
+Detect and resolve problems with your application, you can run health checks.
+
+Two (2) different types
+
+ 1. Running a command inside the container periodically.
+ 2. Periodic Checks on a URL (http)
+
+The typical application behind a load balancer should always have health check implemented
+in some way to ensure availability and resiliency of the application
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nodehelloworld-example.com
+  labels:
+   app:helloworld
+spec:
+ containers:
+ - name: k8s-demo
+   image: wardviaene/k8s-demo
+   ports:
+   - containerPort: 3000
+   livenessProbe:             ### the health check
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 15
+    timeoutSeconds: 30
+
+Demo
+=====
+
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-deployment
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - name: k8s-demo
+        image: wardviaene/k8s-demo
+        ports:
+        - name: nodejs-port
+          containerPort: 3000
+        livenessProbe:
+          httpGet:
+            path: /
+            port: nodejs-port
+          initialDelaySeconds: 15
+          timeoutSeconds: 30
+
+kubectl delete -f deployment/helloworld-nodeselector.yml
+deployment "helloworld-deployment" deleted
+
+kubectl get pods
+NAME                                     READY     STATUS        RESTARTS   AGE
+helloworld-deployment-84bb87c79c-8rjtl   1/1       Terminating   0          20h
+helloworld-deployment-84bb87c79c-k5vwr   1/1       Terminating   0          20h
+helloworld-deployment-84bb87c79c-x2kvc   1/1       Terminating   0          20h
+nodehelloworld.example.com               1/1       Running       0          1d
+
+kubectl create -f deployment/helloworld-healthcheck.yml
+
+deployment "helloworld-deployment" created
+
+kubectl get pods
+NAME                                    READY     STATUS    RESTARTS   AGE
+helloworld-deployment-fb57557f4-9xjrp   1/1       Running   0          34s
+helloworld-deployment-fb57557f4-n6z27   1/1       Running   0          34s
+helloworld-deployment-fb57557f4-tcpdb   1/1       Running   0          34s
+nodehelloworld.example.com              1/1       Running   0          1d
+
+kubectl describe pod helloworld-deployment-fb57557f4-tcpdb
+Name:           helloworld-deployment-fb57557f4-tcpdb
+Namespace:      default
+Node:           minikube/192.168.99.100
+Start Time:     Sun, 24 Dec 2017 17:40:39 -0500
+Labels:         app=helloworld
+                pod-template-hash=961311390
+Annotations:    kubernetes.io/created-by={"kind":"SerializedReference","apiVersion":"v1","reference":{"kind":"ReplicaSet","namespace":"default","name":"helloworld-deployment-fb57557f4","uid":"774d009f-e8fb-11e7-9ced-...
+Status:         Running
+IP:             172.17.0.6
+Created By:     ReplicaSet/helloworld-deployment-fb57557f4
+Controlled By:  ReplicaSet/helloworld-deployment-fb57557f4
+Containers:
+  k8s-demo:
+    Container ID:   docker://b10c67428ec2ce4ee400bdd8fac7ad3448c2f5d9d2dcb71805dcfdbef743f934
+    Image:          wardviaene/k8s-demo
+    Image ID:       docker-pullable://wardviaene/k8s-demo@sha256:2c050f462f5d0b3a6430e7869bcdfe6ac48a447a89da79a56d0ef61460c7ab9e
+    Port:           3000/TCP
+    State:          Running
+      Started:      Sun, 24 Dec 2017 17:40:41 -0500
+    Ready:          True
+    Restart Count:  0
+    Liveness:       http-get http://:nodejs-port/ delay=15s timeout=30s period=10s #success=1 #failure=3
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-n9twd (ro)
+Conditions:
+  Type           Status
+  Initialized    True
+  Ready          True
+  PodScheduled   True
+Volumes:
+  default-token-n9twd:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-n9twd
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     <none>
+Events:
+  Type    Reason                 Age   From               Message
+  ----    ------                 ----  ----               -------
+  Normal  Scheduled              1m    default-scheduler  Successfully assigned helloworld-deployment-fb57557f4-tcpdb to minikube
+  Normal  SuccessfulMountVolume  1m    kubelet, minikube  MountVolume.SetUp succeeded for volume "default-token-n9twd"
+  Normal  Pulling                1m    kubelet, minikube  pulling image "wardviaene/k8s-demo"
+  Normal  Pulled                 1m    kubelet, minikube  Successfully pulled image "wardviaene/k8s-demo"
+  Normal  Created                1m    kubelet, minikube  Created container
+  Normal  Started                1m    kubelet, minikube  Started container
+
+
+You can see the health check.
+
+Liveness:       http-get http://:nodejs-port/ delay=15s timeout=30s period=10s #success=1 #failure=3
+
+kubectl get pods
+NAME                                    READY     STATUS    RESTARTS   AGE
+helloworld-deployment-fb57557f4-9xjrp   1/1       Running   0          3m
+helloworld-deployment-fb57557f4-n6z27   1/1       Running   0          3m
+helloworld-deployment-fb57557f4-tcpdb   1/1       Running   0          3m
+nodehelloworld.example.com              1/1       Running   0          1d
+
+
+If the node and the pod and even the container are ok
+but the app has failed then you wouldn't know it without the healthcheck...
+
+
+
+kubectl edit deployment/helloworld-deployment
+
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: 2017-12-24T22:40:39Z
+  generation: 1
+  labels:
+    app: helloworld
+  name: helloworld-deployment
+  namespace: default
+  resourceVersion: "124842"
+  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/helloworld-deployment
+  uid: 774c7921-e8fb-11e7-9ced-080027875e97
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: helloworld
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - image: wardviaene/k8s-demo
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: nodejs-port
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 30
+                  name: k8s-demo
+                  ports:
+                  - containerPort: 3000
+                    name: nodejs-port
+                    protocol: TCP
+                  resources: {}
+                  terminationMessagePath: /dev/termination-log
+                  terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 3
+            conditions:
+            - lastTransitionTime: 2017-12-24T22:40:42Z
+              lastUpdateTime: 2017-12-24T22:40:42Z
+              message: Deployment has minimum availability.
+              reason: MinimumReplicasAvailable
+              status: "True"
+              type: Available
+            observedGeneration: 1
+            readyReplicas: 3
+            replicas: 3
+            updatedReplicas: 3
+
+
+Here is where you would edit the libeness probe (healthcheck)
+
+livenessProbe:
+  failureThreshold: 3
+  httpGet:
+    path: /
+    port: nodejs-port
+    scheme: HTTP
+  initialDelaySeconds: 15
+  periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 30
+
+
+
+
+.
