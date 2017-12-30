@@ -1,0 +1,213 @@
+
+Configuration parameters that are not secret can be put in a ConfigMap.
+
+Input is key value pairs
+
+The ConfigMap key-value pairs can then be read by the app using:
+
+ - Environment variables
+ - Container commandline arguments in the Pod configuration
+ - using volumes
+
+A config map can contain full configuration files.
+ - e.g. a webserver config file
+
+The file can then b mounted using volumes where the application expects
+its configuration file.
+  - I believe it replaces what was originally loaded.
+
+This is the way to inject configuation setting into containers with changing
+the container itself.
+
+Create a properties file.
+=========================
+use: cat <<EOF>> nameOfFile
+This will open a document and add whatever you write until you type EOF
+
+******i.e.
+cat <<EOF>> app.properties
+driver=jdbc
+database-postgres
+lookandfeel=1
+param.with.hierarchy=xyz
+EOF
+
+To add it to K8s
+
+kubectl create configmap app-config -- from-file=app.properties
+
+Using a ConfigMap
+=================
+
+cat configmap/reverseproxy.conf
+
+server {
+    listen       80;
+    server_name  localhost;
+
+    location / {
+        proxy_bind 127.0.0.1;
+        proxy_pass http://127.0.0.1:3000;
+    }
+
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+}
+
+kubectl create configmap nginx-config --from-file=configmap/reverseproxy.conf
+
+configmap "nginx-config" created
+
+kubectl get configmap
+
+NAME           DATA      AGE
+nginx-config   1         43s
+
+
+
+kubectl get configmap nginx-config -o yaml
+
+apiVersion: v1
+data:
+  reverseproxy.conf: |
+    server {
+        listen       80;
+        server_name  localhost;
+
+        location / {
+            proxy_bind 127.0.0.1;
+            proxy_pass http://127.0.0.1:3000;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: 2017-12-30T15:24:26Z
+  name: nginx-config
+  namespace: default
+  resourceVersion: "229515"
+  selfLink: /api/v1/namespaces/default/configmaps/nginx-config
+  uid: 85997ecd-ed75-11e7-9ced-080027875e97
+
+cat configmap/nginx.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: helloworld-nginx
+  labels:
+    app: helloworld-nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.11
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: config-volume
+      mountPath: /etc/nginx/conf.d
+  - name: k8s-demo
+    image: wardviaene/k8s-demo
+    ports:
+    - containerPort: 3000
+  volumes:
+    - name: config-volume
+      configMap:
+        name: nginx-config
+        items:
+        - key: reverseproxy.conf
+          path: reverseproxy.conf
+
+
+kubectl create -f configmap/nginx.yml
+
+pod "helloworld-nginx" created
+
+
+kubectl create -f configmap/nginx-service.yml
+
+service "helloworld-nginx-service" created
+
+minikube service helloworld-nginx-service --url
+
+http://192.168.99.100:31342
+
+kubectl get pod
+
+NAME               READY     STATUS    RESTARTS   AGE
+database           1/1       Running   0          13h
+helloworld-nginx   2/2       Running   0          2m
+
+curl http://192.168.99.100:31342
+Hello World!
+
+curl http://192.168.99.100:31342 -vvvv
+
+* Rebuilt URL to: http://192.168.99.100:31342/
+*   Trying 192.168.99.100...
+* Connected to 192.168.99.100 (192.168.99.100) port 31342 (#0)
+> GET / HTTP/1.1
+> Host: 192.168.99.100:31342
+> User-Agent: curl/7.43.0
+> Accept: */*
+>
+< HTTP/1.1 200 OK
+< Server: nginx/1.11.13
+< Date: Sat, 30 Dec 2017 15:33:11 GMT
+< Content-Type: text/html; charset=utf-8
+< Content-Length: 12
+< Connection: keep-alive
+< X-Powered-By: Express
+< ETag: W/"c-7Qdih1MuhjZehB6Sv8UNjA"
+<
+* Connection #0 to host 192.168.99.100 left intact
+Hello World!
+
+
+kubectl exec -i -t helloworld-nginx -c nginx --
+root@helloworld-nginx:/#
+
+Get the processes running in a pod.
+===================================
+
+kubectl exec -i -t helloworld-nginx -c nginx -- bash
+root@helloworld-nginx:/# ps x
+  PID TTY      STAT   TIME COMMAND
+    1 ?        Ss     0:00 nginx: master process nginx -g daemon off;
+    6 pts/0    Ss     0:00 bash
+   10 pts/0    R+     0:00 ps x
+
+PID 1 is the process created by the configMap.
+
+This reverseproxy.conf file is now inside the container at etc.nginx/conf.d/:
+
+cat /etc/nginx/conf.d/reverseproxy.conf
+
+server {
+    listen       80;
+    server_name  localhost;
+
+    location / {
+        proxy_bind 127.0.0.1;
+        proxy_pass http://127.0.0.1:3000;
+    }
+
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+}
+
+
+
+
+
+
+
+....
