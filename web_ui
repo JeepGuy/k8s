@@ -1,0 +1,37 @@
+
+kubernetes comes with the web ui instead of the kubectl commands.
+
+- Can give you overview of running applications
+- Create and modify individual K8s resources and workloads
+- Retrieve info on the stat of resources (like kubectl descrive pod)
+
+In general you can access the kubernetes Web UI at
+https://<kubernetes-master>/ui
+
+If you cannot access it - you can install  it manually.
+
+kubectl create -f htps://rawgit.com/kubernetes/dashboard/master/src/deploy/kuberenetes-dashboards.yaml
+
+
+If it asks for a password:
+you can retrieve the password by entering
+
+kubectl config view
+
+Minikube...
+
+minikube dashboard
+
+if you want the URL
+
+minikube dashboard --url
+
+
+
+
+
+
+
+
+
+.........
