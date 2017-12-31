@@ -1,6 +1,6 @@
 HEALTHCHECKS
 
-If the app malfunctions, the podd and container can stll run, the applicatioin might not work anymore.
+If the app malfunctions, the pod and container can still run, the application might not work anymore.
 
 Detect and resolve problems with your application, you can run health checks.
 

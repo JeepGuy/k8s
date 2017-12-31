@@ -1,0 +1,251 @@
+Ingress Controller
+
+Available since k8s 1.1
+
+Allows inbound connections to the cluster
+
+Its the alternative to the external Loadbalancer and nodePorts. (ELB = external load balancer)
+
+ - Ingress allows you to easily expose services that need to be accessible the
+ outside to the cluster.
+
+ With ingress you can run your own ingress controller - which is basically a load balancer -
+ within the Kubernetes cluster
+
+ There are default ingress controllers available, or you can write your own
+ ingress controller.
+
+ You can create the ingress rules using the ingress object
+
+DEMO
+====
+
+cat ingress/nginx-ingress-controller.yml
+
+apiVersion: v1
+kind: ReplicationController   ###### it is a replication controller
+metadata:
+  name: nginx-ingress-controller  ######  this is an existing controller we downloaded.
+  labels:
+    k8s-app: nginx-ingress-lb
+spec:
+  replicas: 1
+  selector:
+    k8s-app: nginx-ingress-lb
+  template:
+    metadata:
+      labels:
+        k8s-app: nginx-ingress-lb
+        name: nginx-ingress-lb
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+      - image: gcr.io/google_containers/nginx-ingress-controller:0.8.3 ###### downloaded here.
+        name: nginx-ingress-lb
+        imagePullPolicy: Always
+        readinessProbe:               ######  has a healthcheck....
+          httpGet:                    ######  will tell us when ready.
+            path: /healthz
+            port: 10254
+            scheme: HTTP
+        livenessProbe:
+          httpGet:
+            path: /healthz           ######  has a healthcheck....
+            port: 10254
+            scheme: HTTP
+          initialDelaySeconds: 10
+          timeoutSeconds: 1
+        # use downward API
+        env:
+          - name: POD_NAME     ######  specifies the pod name from var
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE  ######  in the variable namespace.
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        ports:
+        - containerPort: 80   ###### the port it runs on.
+          hostPort: 80
+        - containerPort: 443  ######  the ports is runs on.
+          hostPort: 443
+        args:
+        - /nginx-ingress-controller   ######  arg when it launches the containers
+        - --default-backend-service=$(POD_NAMESPACE)/echoheaders-default
+        ######   this is going to be the default service that is called when accessed and no
+        ##### specific service is called.
+
+cat ingress/ingress.yml
+
+# An Ingress with 2 hosts and 3 endpoints
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: helloworld-rules
+spec:
+  rules:
+  - host: helloworld-v1.example.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: helloworld-v1
+          servicePort: 80
+  - host: helloworld-v2.example.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: helloworld-v2
+          servicePort: 80
+
+Launch all pods and services:
+
+kubectl create -f ingress/ingress.yml
+ingress "helloworld-rules" created
+
+ kubectl create -f ingress/nginx-ingress-controller.yml
+replicationcontroller "nginx-ingress-controller" created
+
+ kubectl create -f ingress/echoservice.yml
+replicationcontroller "echoheaders" created
+service "echoheaders-default" created
+
+kubectl create -f ingress/helloworld-v1.yml
+deployment "helloworld-v1-deployment" created
+service "helloworld-v1" created
+
+kubectl create -f ingress/helloworld-v2.yml
+deployment "helloworld-v2-deployment" created
+service "helloworld-v2" created
+
+See that the deployment includes the service name.
+----------------------------------------------------
+cat ingress/helloworld-v1.yml
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-v1-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: helloworld-v1
+    spec:
+      containers:
+      - name: k8s-demo
+        image: wardviaene/k8s-demo:latest
+        ports:
+        - name: nodejs-port
+          containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: helloworld-v1
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    nodePort: 30303
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: helloworld-v1
+
+kubectl get pods
+NAME                                        READY     STATUS    RESTARTS   AGE
+echoheaders-p28qp                           1/1       Running   0          3m
+helloworld-nginx                            2/2       Running   0          1d
+helloworld-v1-deployment-74c59d8685-l7qdn   1/1       Running   0          3m
+helloworld-v2-deployment-7949fc5f69-6zjhw   1/1       Running   0          3m
+nginx-ingress-controller-mznfb              1/1       Running   1          4m
+
+
+
+minikube ip
+192.168.99.100
+
+curl 192.168.99.100
+
+since no hosts were specified then the default service was returned (echo headers)
+
+CLIENT VALUES:
+client_address=('172.17.0.3', 41604) (172.17.0.3)
+command=GET
+path=/
+real path=/
+query=
+request_version=HTTP/1.1
+
+SERVER VALUES:
+server_version=BaseHTTP/0.6
+sys_version=Python/3.5.0
+protocol_version=HTTP/1.0
+
+HEADERS RECEIVED:
+Accept=*/*
+Connection=close
+Host=192.168.99.100
+User-Agent=curl/7.43.0
+X-Forwarded-For=192.168.99.1
+X-Forwarded-Host=192.168.99.100
+X-Forwarded-Port=80
+X-Forwarded-Proto=http
+X-Real-IP=192.168.99.1
+Jamess-MBP-2:kubernetes
+
+Now fake a host target by passing an arguement with the curl command.
+
+curl 192.168.99.100 -H 'HOST: helloworld-v1.example.com'
+
+output
+Hello World!    ### this is the v1 app ...
+
+curl 192.168.99.100 -H 'HOST: helloworld-v2.example.com'
+
+Hello World v2!  - this forwarded it to the service the correct service.
+
+kubectl get service
+NAME                       TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)          AGE
+database-service           NodePort    10.0.0.221   <none>        3306:31674/TCP   1d
+echoheaders-default        NodePort    10.0.0.141   <none>        80:30302/TCP     11m
+helloworld-db-service      NodePort    10.0.0.92    <none>        3000:32260/TCP   1d
+helloworld-nginx-service   NodePort    10.0.0.118   <none>        80:31342/TCP     1d
+helloworld-v1              NodePort    10.0.0.177   <none>        80:30303/TCP     11m
+helloworld-v2              NodePort    10.0.0.24    <none>        80:30304/TCP     11m
+kubernetes                 ClusterIP   10.0.0.1     <none>        443/TCP          8d
+
+deleted extra services from previous labs.
+
+kubectl get services
+NAME                  TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE
+echoheaders-default   NodePort    10.0.0.141   <none>        80:30302/TCP   13m
+helloworld-v1         NodePort    10.0.0.177   <none>        80:30303/TCP   13m
+helloworld-v2         NodePort    10.0.0.24    <none>        80:30304/TCP   13m
+kubernetes            ClusterIP   10.0.0.1     <none>        443/TCP        8d
+
+
+The services that is hit is based on the host target v1 verses v2...
+
+this gives us the capability to runa load balancer within our cluster and not rely
+on an default / downloaded external load balancer that doesn't have all the capability we might
+want -- meaning we could write out own.
+
+
+
+
+
+
+
+
+
+
+
+
+
+....
