@@ -1,0 +1,24 @@
+Resource usage monitoring
+
+Heapsters enables Container Cluster Monitoring  and Performance Analysis
+
+Provides a monitoring platform for kubernetes
+
+Pre-requisite if you want to do pod auto-scaling in Kubernetes.
+
+Heapster export clusters metrics via REST endpoints
+
+Can use different backends with Heapstr
+ - InfluxDB will be used (time series data) or Kafka are possible.
+
+ Visualizations (graphs) can be shown using Grafana.
+ - The Kubernetes dashboard will also show graphs once monitoring is enabled.
+
+ All these technologies can be started in pods
+
+ The yaml files can be found on the fithub repo of Heapster.
+
+ After downloading the repo the whole plarform can be deployed isng he addon system or by
+ Kubectl create -f directory -with-yaml-files/
+
+if not using k8s addons then you must comment out the lines in the yaml files as noted.
