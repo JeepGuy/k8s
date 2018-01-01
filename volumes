@@ -1,0 +1,469 @@
+Volumes allow you to store data outside the containers
+
+When a container stops all data on the container itself is lost
+ - that is why up until these demos used statless apps: apps that
+  dont' keep a local state rather store their state in a n external service
+
+   -- An external service like a data vbase cahcing server (mySQ: AWS S3 etc)
+
+Persistent Volume in K8s allow you to attach a volume to a container that will exist
+even when the container stops.
+-- when  the container stops your volume can be attached to new volume and keep the state
+of the application in the files that reside on the volume.
+
+Using volumes you can deploy application with state on your cluster.
+  - Those applications need to read/write to files on the local filesystem that
+    need to be persistent over time.
+
+You could run a MySQL database using persistent volumes
+   - might not be ready for production yet (circa 2016) as it is in beta.
+   - be careful
+
+To use volumes you need to create the volume first.
+
+(see files / notes for course)
+
+To use volumes, you need to create a pod with a volume definition.
+
+Add to the container:
+
+volumeMounts:
+ -mountPath: /myvol
+  name: myvolume
+other data...
+volumes:
+ -name: myvolume
+  awsElasticBlockStore                            s(example)
+  volumeID: vol-<random_alpanumeric char string>
+      i.e.  vol-0555568310533eeedd
+
+DEMO
+====
+Set up on KOPS AWS tool.
+
+kops get cluster --state=s3://kops-state-ran0mstring1
+
+NAME			CLOUD	ZONES
+kubernetes.jbrent.info	aws	us-east-1a
+
+Create volume:
+
+https://docs.aws.amazon.com/cli/latest/reference/ec2/create-volume.html
+
+create-volume
+--availability-zone <value>
+[--encrypted | --no-encrypted]
+[--iops <value>]
+[--kms-key-id <value>]
+[--size <value>]
+[--snapshot-id <value>]
+[--volume-type <value>]
+[--dry-run | --no-dry-run]
+[--tag-specifications <value>]
+[--cli-input-json <value>]
+[--generate-cli-skeleton <value>]
+
+CMD:
+
+aws ec2 create-volume --size 10  --region us-east-1 --availability-zone us-east-1a --volume-type gp2
+
+gp2 = a ssd volume
+
+Stdout:
+{
+    "AvailabilityZone": "us-east-1a",
+    "Encrypted": false,
+    "VolumeType": "gp2",
+    "VolumeId": "vol-0a828b0e9760d332c",
+    "State": "creating",
+    "Iops": 100,
+    "SnapshotId": "",
+    "CreateTime": "2018-01-01T16:00:57.423Z",
+    "Size": 10
+}
+
+-- worked....
+
+"VolumeId": "vol-0a828b0e9760d332c", is the important element.
+
+vim volumes/helloworld-with-volume.yml
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - name: k8s-demo
+        image: wardviaene/k8s-demo
+        ports:
+        - name: nodejs-port
+          containerPort: 3000
+        volumeMounts:
+        - mountPath: /myvol
+          name: myvolume
+      volumes:
+      - name: myvolume
+        awsElasticBlockStore:
+          volumeID: # insert AWS EBS volumeID here    ###############
+                    vol-0a828b0e9760d332c
+
+kubectl get nodes
+NAME                            STATUS    ROLES     AGE       VERSION
+ip-172-20-34-216.ec2.internal   Ready     node      14d       v1.8.4
+ip-172-20-43-81.ec2.internal    Ready     master    14d       v1.8.4
+ip-172-20-56-5.ec2.internal     Ready     node      14d       v1.8.4
+
+
+kubectl get deployments
+NAME             DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+hello-minikube   1         1         1            1           14d
+
+Deploy the app:
+---------------
+
+kubectl create -f volumes/helloworld-with-volume.yml
+
+deployment "helloworld-deployment" created
+
+kubectl get pod
+NAME                                     READY     STATUS              RESTARTS   AGE
+hello-minikube-5bc754d4cd-jh5gc          1/1       Running             0          14d
+helloworld-deployment-855f4695db-v5trv   0/1       ContainerCreating   0          48s
+nodehelloworld.example.com               1/1       Running             0          1
+
+kubectl delete deployment hello-minikube
+deployment "hello-minikube" deleted
+
+kubectl delete pod nodehelloworld.example.com
+pod "nodehelloworld.example.com" deleted
+
+ubuntu@ubuntu-xenial:~/kubernetes-course$
+kubectl get pod
+NAME                                     READY     STATUS              RESTARTS   AGE
+helloworld-deployment-855f4695db-v5trv   0/1       ContainerCreating   0          2m
+nodehelloworld.example.com               1/1       Terminating         0          13d
+
+kubectl get pod
+NAME                                     READY     STATUS              RESTARTS   AGE
+helloworld-deployment-855f4695db-v5trv   0/1       ContainerCreating   0          3m
+
+https://stackoverflow.com/questions/47278433/need-help-on-volume-mount-issue-with-kubernetes
+Attach failed for volume "myvolume" : Error attaching EBS volume "vol-0a828b0e9760d332c"
+to instance "i-0324d4de04ba08ffd":
+"UnauthorizedOperation: You are not authorized to perform this operation.
+In kops 1.8.0-beta.1, master node requires you to tag the AWS volume with:
+
+KubernetesCluster: <clustername-here>
+
+If you have created the k8s cluster using kops like so:
+
+kops create cluster --name=k8s.yourdomain.com [other-args-here]
+
+your tag on the EBS volume needs to be
+
+KubernetesCluster: k8s.yourdomain.com
+
+And the policy on master would contain a block which would contain:
+
+{
+  "Sid": "kopsK8sEC2MasterPermsTaggedResources",
+  "Effect": "Allow",
+  "Action": [
+    "ec2:AttachVolume",
+    "ec2:AuthorizeSecurityGroupIngress",
+    "ec2:DeleteRoute",
+    "ec2:DeleteSecurityGroup",
+    "ec2:DeleteVolume",
+    "ec2:DetachVolume",
+    "ec2:RevokeSecurityGroupIngress"
+  ],
+  "Resource": [
+    "*"
+  ],
+  "Condition": {
+    "StringEquals": {
+      "ec2:ResourceTag/KubernetesCluster": "k8s.yourdomain.com"
+    }
+  }
+}
+The condition indicates that master-policy has privilege to only attach volumes which contain the right tag.
+
+
+Must tag the volume:
+aws ec2 create-volume --size 10  --region us-east-1 --availability-zone us-east-1a --volume-type gp2
+
+To create a volume with tags
+
+This example creates a volume and applies two tags: purpose = production, and cost-center = cc123.
+
+aws ec2 create-volume --availability-zone us-east-1a --volume-type gp2 --size 80 --tag-specifications
+'ResourceType=volume,Tags=[{Key=purpose,Value=production},{Key=cost-center,Value=cc123}]'
+
+"ec2:ResourceTag/KubernetesCluster": "k8s.yourdomain.com"
+"VolumeId": "vol-0a828b0e9760d332c",
+
+Delete deployment then delete volume and re-create:
+---------------------------------------------------
+
+delete-volume
+--volume-id <value>
+aws ec2 delete-volume --volume-id vol-0a828b0e9760d332c
+
+aws ec2 delete-volume --volume-id vol-0a828b0e9760d332c
+You must specify a region. You can also configure your region by running "aws configure"
+
+aws ec2 create-volume --size 10  --region us-east-1 --availability-zone us-east-1a --volume-type gp2
+aws ec2 delete-volume --volume-id vol-0a828b0e9760d332c --region us-east-1
+
+successful:
+aws ec2 delete-volume --volume-id vol-0a828b0e9760d332c --region us-east-1
+ubuntu@ubuntu-xenial:~/kubernetes-course$
+
+aws ec2 delete-volume --volume-id vol-0296493f0f904ef99 --region us-east-1
+
+
+Updated Command: on one line this time ;-)
+
+
+aws ec2 create-volume --size 10  --region us-east-1 --availability-zone us-east-1a --volume-type gp2 --tag-specifications 'ResourceType=volume,Tags=[{Key=KubernetesCluster,Value=kubernetes.jbrent.info}]'
+{
+    "AvailabilityZone": "us-east-1a",
+    "Tags": [
+        {
+            "Value": "kubernetes.jbrent.info",
+            "Key": "KubernetesCluster"
+        }
+    ],
+    "Encrypted": false,
+    "VolumeType": "gp2",
+    "VolumeId": "vol-09c06fe04c493e9e8",
+    "State": "creating",
+    "Iops": 100,
+    "SnapshotId": "",
+    "CreateTime": "2018-01-01T16:58:23.046Z",
+    "Size": 10
+}
+
+
+kubectl create -f volumes/helloworld-with-volume.yml
+
+#### Forgot to modify the yaml volume.
+
+Events:
+  Type     Reason                 Age   From                                  Message
+  ----     ------                 ----  ----                                  -------
+  Normal   Scheduled              51s   default-scheduler                     Successfully assigned helloworld-deployment-855f4695db-8mtkz to ip-172-20-56-5.ec2.internal
+  Normal   SuccessfulMountVolume  51s   kubelet, ip-172-20-56-5.ec2.internal  MountVolume.SetUp succeeded for volume "default-token-9928s"
+  Warning  FailedMount            51s   attachdetach                          AttachVolume.Attach failed for volume "myvolume" : Error attaching EBS volume "vol-0a828b0e9760d332c" to instance "i-09483dcd245eaa96c": "InvalidVolume.NotFound: The volume 'vol-0a828b0e9760d332c' does not exist.\n\tstatus code: 400, request id: 73edc360-400a-45d0-a8f0-f7dd7c916d07"
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl delete -f volumes/helloworld-with-volume.yml
+deployment "helloworld-deployment" deleted
+ubuntu@ubuntu-xenial:~/kubernetes-course$ vim volumes/helloworld-with-volume.yml
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl create -f volumes/helloworld-with-volume.yml
+deployment "helloworld-deployment" created
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl get pod
+NAME                                     READY     STATUS              RESTARTS   AGE
+helloworld-deployment-74687d958b-tk7lb   0/1       ContainerCreating   0          5s
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl describe pod helloworld-deployment-74687d958b-tk7lb
+Name:           helloworld-deployment-74687d958b-tk7lb
+Namespace:      default
+Node:           ip-172-20-34-216.ec2.internal/172.20.34.216
+Start Time:     Mon, 01 Jan 2018 17:02:19 +0000
+Labels:         app=helloworld
+                pod-template-hash=3024385146
+Annotations:    kubernetes.io/created-by={"kind":"SerializedReference","apiVersion":"v1","reference":{"kind":"ReplicaSet","namespace":"default","name":"helloworld-deployment-74687d958b","uid":"8723d355-ef15-11e7-838a...
+                kubernetes.io/limit-ranger=LimitRanger plugin set: cpu request for container k8s-demo
+Status:         Pending
+IP:
+Created By:     ReplicaSet/helloworld-deployment-74687d958b
+Controlled By:  ReplicaSet/helloworld-deployment-74687d958b
+Containers:
+  k8s-demo:
+    Container ID:
+    Image:          wardviaene/k8s-demo
+    Image ID:
+    Port:           3000/TCP
+    State:          Waiting
+      Reason:       ContainerCreating
+    Ready:          False
+    Restart Count:  0
+    Requests:
+      cpu:        100m
+    Environment:  <none>
+    Mounts:
+      /myvol from myvolume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-9928s (ro)
+Conditions:
+  Type           Status
+  Initialized    True
+  Ready          False
+  PodScheduled   True
+Volumes:
+  myvolume:
+    Type:       AWSElasticBlockStore (a Persistent Disk resource in AWS)
+    VolumeID:   vol-09c06fe04c493e9e8
+    FSType:
+    Partition:  0
+    ReadOnly:   false
+  default-token-9928s:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-9928s
+    Optional:    false
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.alpha.kubernetes.io/notReady:NoExecute for 300s
+                 node.alpha.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason                 Age   From                                    Message
+  ----    ------                 ----  ----                                    -------
+  Normal  Scheduled              20s   default-scheduler                       Successfully assigned helloworld-deployment-74687d958b-tk7lb to ip-172-20-34-216.ec2.internal
+  Normal  SuccessfulMountVolume  19s   kubelet, ip-172-20-34-216.ec2.internal  MountVolume.SetUp succeeded for volume "default-token-9928s"
+  Normal  SuccessfulMountVolume  1s    kubelet, ip-172-20-34-216.ec2.internal  MountVolume.SetUp succeeded for volume "myvolume"
+  Normal  Pulling                1s    kubelet, ip-172-20-34-216.ec2.internal  pulling image "wardviaene/k8s-demo"
+
+kubectl get pod
+NAME                                     READY     STATUS    RESTARTS   AGE
+helloworld-deployment-74687d958b-tk7lb   1/1       Running   0          1m
+
+fixed............
+
+Start bash
+kubectl exec helloworld-deployment-74687d958b-tk7lb -i -t -- bash
+root@helloworld-deployment-74687d958b-tk7lb:/app#
+
+
+kubectl exec helloworld-deployment-74687d958b-tk7lb -i -t -- bash
+root@helloworld-deployment-74687d958b-tk7lb:/app# ls -ahl /myvol/
+total 24K
+drwxr-xr-x 3 root root 4.0K Jan  1 17:02 .
+drwxr-xr-x 1 root root 4.0K Jan  1 17:03 ..
+drwx------ 2 root root  16K Jan  1 17:02 lost+found
+root@helloworld-deployment-74687d958b-tk7lb:/app# echo 'test' > /myvol/myvol.txt
+root@helloworld-deployment-74687d958b-tk7lb:/app# echo 'test2' > test.txt
+root@helloworld-deployment-74687d958b-tk7lb:/app# ls -ahl /myvol/myvol.txt
+-rw-r--r-- 1 root root 5 Jan  1 17:07 /myvol/myvol.txt
+root@helloworld-deployment-74687d958b-tk7lb:/app# ls -ahl test.txt
+-rw-r--r-- 1 root root 6 Jan  1 17:07 test.txt
+
+
+/app# exit
+exit
+
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl get node
+NAME                            STATUS    ROLES     AGE       VERSION
+ip-172-20-34-216.ec2.internal   Ready     node      14d       v1.8.4
+ip-172-20-43-81.ec2.internal    Ready     master    14d       v1.8.4
+ip-172-20-56-5.ec2.internal     Ready     node      14d       v1.8.4
+ubuntu@ubuntu-xenial:~/kubernetes-course$
+
+
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl get pod
+
+NAME                                     READY     STATUS    RESTARTS   AGE
+helloworld-deployment-74687d958b-tk7lb   1/1       Running   0          9m
+
+
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl describe pod helloworld-deployment-74687d958b-tk7lb
+
+Name:           helloworld-deployment-74687d958b-tk7lb
+Namespace:      default
+Node:           ip-172-20-34-216.ec2.internal/172.20.34.216    ##### found the node.
+
+
+Terminal window locked up... in new terminal window...
+then unlocked
+
+pod "helloworld-deployment-74687d958b-tk7lb" evicted
+pod "kube-dns-7f56f9f8c7-9wxqn" evicted
+node "ip-172-20-34-216.ec2.internal" drained
+
+
+kubectl get pods
+NAME                                     READY     STATUS              RESTARTS   AGE
+helloworld-deployment-74687d958b-fl2hh   0/1       ContainerCreating   0          47s
+
+So the new pod is being created...
+
+kubectl get pods
+NAME                                     READY     STATUS              RESTARTS   AGE
+helloworld-deployment-74687d958b-fl2hh   0/1       ContainerCreating   0          47s
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl get pods
+NAME                                     READY     STATUS    RESTARTS   AGE
+helloworld-deployment-74687d958b-fl2hh   1/1       Running   0          2m
+
+describe the new pod
+Normal   SuccessfulMountVolume  3m    kubelet, ip-172-20-56-5.ec2.internal  MountVolume.SetUp succeeded for volume "myvolume"
+Normal   Pulling                3m    kubelet, ip-172-20-56-5.ec2.internal  pulling image "wardviaene/k8s-demo"
+Normal   Pulled                 3m    kubelet, ip-172-20-56-5.ec2.internal  Successfully pulled image "wardviaene/k8s-demo"
+Normal   Created                3m    kubelet, ip-172-20-56-5.ec2.internal  Created container
+Normal   Started                3m    kubelet, ip-172-20-56-5.ec2.internal  Started container
+
+the volume mounted... so ok.
+
+the new node was created.
+
+Name:           helloworld-deployment-74687d958b-fl2hh
+Namespace:      default
+Node:           ip-172-20-56-5.ec2.internal/172.20.56.5
+Start Time:     Mon, 01 Jan 2018 17:14:54 +0000
+Labels:         app=helloworld
+                pod-template-hash=3024385146
+
+                ip-172-20-34-216.ec2.internal   Ready,SchedulingDisabled   node      14d       v1.8.4
+                ip-172-20-43-81.ec2.internal    Ready                      master    14d       v1.8.4
+                ip-172-20-56-5.ec2.internal     Ready                      node      14d       v1.8.4
+
+access the new pod/container.
+
+OLD pod: kubectl exec helloworld-deployment-74687d958b-tk7lb -i -t -- bash different than new one.
+
+kubectl exec helloworld-deployment-74687d958b-fl2hh -i -t -- bash
+root@helloworld-deployment-74687d958b-fl2hh:/app# ls -ahl /myvol/myvol.txt
+
+-rw-r--r-- 1 root root 5 Jan  1 17:07 /myvol/myvol.txt
+root@helloworld-deployment-74687d958b-fl2hh:/app#
+root@helloworld-deployment-74687d958b-fl2hh:/app# ls -ahl test.txt
+ls: cannot access test.txt: No such file or directory
+
+delete deployment and volume.
+
+
+
+
+aws ec2 delete-volume --volume-id vol-09c06fe04c493e9e8 --region us-east-1
+
+ubuntu@ubuntu-xenial:~/kubernetes-course$ vim volumes/helloworld-with-volume.yml
+ubuntu@ubuntu-xenial:~/kubernetes-course$ aws ec2 delete-volume --volume-id vol-09c06fe04c493e9e8 --region us-east-1
+
+An error occurred (VolumeInUse) when calling the DeleteVolume operation: Volume vol-09c06fe04c493e9e8 is currently attached to i-09483dcd245eaa96c
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl delete -f volumes/helloworld-with-volume.yml
+deployment "helloworld-deployment" deleted
+ubuntu@ubuntu-xenial:~/kubernetes-course$ aws ec2 delete-volume --volume-id vol-09c06fe04c493e9e8 --region us-east-1
+
+An error occurred (VolumeInUse) when calling the DeleteVolume operation: Volume vol-09c06fe04c493e9e8 is currently attached to i-09483dcd245eaa96c
+ubuntu@ubuntu-xenial:~/kubernetes-course$ aws ec2 delete-volume --volume-id vol-09c06fe04c493e9e8 --region us-east-1
+
+An error occurred (VolumeInUse) when calling the DeleteVolume operation: Volume vol-09c06fe04c493e9e8 is currently attached to i-09483dcd245eaa96c
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl get pods
+NAME                                     READY     STATUS        RESTARTS   AGE
+helloworld-deployment-74687d958b-fl2hh   1/1       Terminating   0          16m
+
+
+aws ec2 delete-volume --volume-id vol-09c06fe04c493e9e8 --region us-east-1
+
+An error occurred (VolumeInUse) when calling the DeleteVolume operation: Volume vol-09c06fe04c493e9e8 is currently attached to i-09483dcd245eaa96c
+ubuntu@ubuntu-xenial:~/kubernetes-course$ kubectl get pods
+No resources found.
+ubuntu@ubuntu-xenial:~/kubernetes-course$ aws ec2 delete-volume --volume-id vol-09c06fe04c493e9e8 --region us-east-1
+ubuntu@ubuntu-xenial:~/kubernetes-course$
+
+
+
+
+....

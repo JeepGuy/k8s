@@ -16,13 +16,15 @@ pip install awscli
 aws to test.
 
 Create an AWS Account
+---------------------
 
-Got AWS IAM - I dentity and access management.
+Goto AWS IAM - Identity and access management.
 Users > Create new user call it kops
 Generate Access key
 Copy the key
 
-go back to shell of VM
+Go back to shell of VM:
+----------------------
 
 AWS configure
 Will ask for access
@@ -42,13 +44,15 @@ drwxr-xr-x 8 ubuntu ubuntu 4.0K Dec 17 23:35 ..
 -rw------- 1 ubuntu ubuntu  116 Dec 11 19:49 credentials
 
 Give Kops user permission... choose Admin so it has all roles/permissions
+--------------------------
 
 IAM > Users > kops
 attach the admin access policy.
 
 Goto S3 in AWS
 
-Create a bucket.
+Create a bucket
+---------------
 kops-state-<randomstring>
 in region us-east-1 (a = availability zone)
 
@@ -60,7 +64,7 @@ must create zone in Rt53 to manage the subdomain.
 set up access permissions? set to public in order to get kops cluster to work?
 -Yes set the S3 bucket I had to change the permission on the S3 bucket to open public access
 List objects and Write objects to everyone.
-- This propably means the kops user has to be added to the bucket. Experiment later.
+- This probably means the KOPS user has to be added to the bucket. Experiment later.
 
 
 
