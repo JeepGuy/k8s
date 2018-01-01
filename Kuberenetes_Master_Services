@@ -1,0 +1,17 @@
+Kubernetes Master Services
+
+What is running on the Master Nodes.
+
+APIs
+Scheduling Actuator
+REST interface to other nodes etc.via each node's kubelet
+Controller Manager (e.g. replication controller, etc.)
+Scheduler control the Scheduling Actuator.
+
+The database for all the commands and controller is it e etcd nodes usually there are three.
+
+each node has a kublet ...
+
+
+
+...
