@@ -1,0 +1,35 @@
+Auto provision volumes = Persistent Volumes
+
+
+Kubernetes plugins have the capability to provision storage for you.
+
+Done in a storage class object.
+
+Check persistent Volumes on the K8s website for updates.
+
+storage class...
+
+Demo of Wordpress...
+
+env:
+spec:
+ container:
+ - command:
+  - bash
+  -c  (command) ??? I thought this meant container...
+
+pet sets are the predecessor to statefulsets...
+
+no notes taken.
+
+This is based on ordinal numbering / naming of pods for dns resolution.
+
+
+
+
+
+
+
+
+
+....
