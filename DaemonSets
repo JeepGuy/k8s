@@ -1,0 +1,16 @@
+Daemon sets.
+
+Daemon Sets ensure that every single node in the kubernetes cluster runs the same pod resource.
+- Useful if you want to ensure that a certain pod is running on every single kubernetes nodePort
+
+When a node is added to the cluster  a new pod will be started automatically.
+
+With a node is removed the pod will not be rescheduled on another node.
+
+use cases:
+
+-loggining
+-monitoring
+-load balancers /reverse proxies / API Gateways.
+
+A running a daemon that only needs pod instance per physical instance.
