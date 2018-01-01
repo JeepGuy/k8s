@@ -1,0 +1,77 @@
+Two types of users.
+
+Normal user - which is used to access the cluster externally
+ - e.g. through kubectl
+ - This is not managed using objects.
+
+ Service user, which is managed by an ovject in Kubernetes.
+  - This type of user is used to quthenitcate within the cluster.
+  - e.g. from inside a pod or from a kubelet.
+
+  These credential are managed like Secrets.
+
+Authentication strategies
+
+- Client certificates
+- Bearer Tokens
+- Authentication proxy
+- HTTP Basic Authentication  (login and password)
+- OpenID  (used by Google and Azure)
+- Webhooks   (can specify your own authentication mechanism)
+
+User Management
+----------------
+Service users
+ - Service Users are using Service Account Tokens
+ - Stored as credential using Secrets
+     - Those secrets are mounted in the pods to allow communication
+       between the services
+ - Service users are specific to a namespace.
+
+ - Are created automatially by the API or manually using objects.
+
+ - Any API call that is not authenticated is considered as an anonymous user.
+
+Normal users
+------------
+
+- Independently from the authenticataion mechanism, normal users have the following
+attributes:
+ - a username  (user123 or user123@gmail.com)
+ - UID
+ - Groups
+ - Extra fields to store extra information
+
+After a normal user authencates, it will have access to everyting
+- to Limit - need to configure authorization
+
+Multiple ways:
+ - Always allow/Always deny
+ - ABAC (Attribute-Based Access Control)
+ - RBAC (Role Based Access Control)
+ - Webhook (authorization by remote service)
+
+ABAC is experimental.
+RBAC is more mature.
+
+RBAC uses the rbac.authroization.k8s.io API group.
+
+Demo Adding users
+=================
+
+minikube ssh
+
+Creating keys... see video and procedure document for commands.
+
+Certificates
+	•	Creating a new key for a new user: openssl genrsa -out myuser.pem 2048
+	•	Creating a certificate request:
+  openssl req -new -key myuser.pem -out myuser-csr.pem -subj "/CN=myuser/O=myteam/"
+	•	Creating a certificate:
+  openssl x509 -req -in myuser-csr.pem -CA /path/to/kubernetes/ca.crt
+  -CAkey /path/to/kubernetes/ca.key -CAcreateserial -out myuser.crt -days 10000
+
+SEE Add_users_certificates in this repo for more detail.
+
+
+.....

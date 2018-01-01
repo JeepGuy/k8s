@@ -1,0 +1,39 @@
+Demo from user management.
+
+Optional: ssh into your cluster. If not then copy the keys to the master node.
+
+1. Create a new key and certificate for your user.
+  sudo openssl req -new -key myuser.pem -out myuser-csr.pem -subj "/CN=myuser/O=myteam/"
+              cn myuser is username, and myteam is the group
+2. Create a new certicate from the .pem that is signed by your certificate authority.
+   sudo openssl x509 -req -in myuser-csr.pem -CA /path/to/kubernetes/ca.crt
+               -CAkey /path/to/kubernetes/ca.key -CAcreateserial -out myuser.crt -days 10000
+3. Cat the certificate files
+4. Copy them to your host system (your workstation)
+   kubectl or minikube "name.key"
+   and "name.crt"
+5. Change the key name and location in your .kube/config file
+   vim .kube/config
+
+   Verify in your config file:
+   kubectl config view
+
+
+
+
+
+
+Demo Adding users
+=================
+
+minikube ssh
+
+Creating keys... see video...
+From procedure document.
+Certificates
+	•	Creating a new key for a new user: openssl genrsa -out myuser.pem 2048
+	•	Creating a certificate request:
+  openssl req -new -key myuser.pem -out myuser-csr.pem -subj "/CN=myuser/O=myteam/"
+	•	Creating a certificate:
+  openssl x509 -req -in myuser-csr.pem -CA /path/to/kubernetes/ca.crt
+  -CAkey /path/to/kubernetes/ca.key -CAcreateserial -out myuser.crt -days 10000
