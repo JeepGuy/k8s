@@ -1,0 +1,57 @@
+Resource Quotas
+
+When a Kube cluster is used my multiple people or teams resource management becomes more important.
+
+ - You want to be able to manage the resources you give a person or team
+ - You don't want one person or team using all the resoures (CPU/Memory) of the cluster.
+
+You can divide your cluster in namespaces and enable resource quotas on it.
+ - You can do this using the ResourceQuota and objectQuota objects.
+
+Each container an specify request capacity and capacity limits
+
+ - Request capacity is an explicit request for resources
+  - The scheduler can use the request capacity to make decisions on where to put your pod.
+  - You can use it to set a minimum amount of resources the pod needs.
+
+- Resource limit is a limit imposed to the container.
+ - The container will not be able to utilize more resources than specified
+
+Example:
+
+Run a deployment with a pod with a CPU resource request of 200m.
+You can also put a limit e.g. 400m
+
+if a capacity quota has been specified by the admin, then each pods needs
+ to specify capacity quota during creation.
+  - The admin can spcify default request values for pods that don't
+    specify any values for capacity.
+  - Same is valid for limit quotas.
+
+if a resource is requested that exceed the allowed capacity, the server API
+will give the 403 FORBIDDEN Error - and kubectl will show an error.
+
+The Admin can set the following resource limits within a namespace.
+-------------------------------------------------------------------
+
+requests.cpu  = The sum of CPU requests of all pods cannot excced this value.
+requests.mem  = The sum of CPU requests of all pods cannot excced this value.
+requests.storage = The sum of storage request of all persistent volume claims cannot excced this value.
+limits.cpu  = The sum of CPU LIMITS of all pods cannot excced this value.
+limits.memory  = The sum of memory limits of all pods cannot excced this value.
+
+The Admin can set the following object limits
+---------------------------------------------
+
+ConfigMaps   Total number of configmaps that can exist in a namespaces
+persistentvolumeclaims
+pods
+replicationcontrollers
+resourcequotas
+services
+services.LoadBalancer
+services.nodePorts
+secrets
+
+
+....
