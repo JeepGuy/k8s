@@ -1,0 +1,106 @@
+Autoscaling
+
+OOB  as of K1.3 Horizontal scaling can be done automatically.
+ - Deployment, Replication Controller, or ReplicaSet
+
+ Scaling based on CPU usage possible
+
+ other application based metrics available (request latency etc.)
+     - to enable this must be started withthe env var ENABLE_CUSTOM_METRICS=true
+
+
+Autoscaling will periodically query the utilization for the targeted pods.
+
+Autoscaling will use heapster, the monitoring tool, to gather its metrics and make
+scaling decisions
+     - Heapster must be installed and running before autscaling will work.
+
+Example:
+Run a deploymnt with a pod with a Cpu resource request of 200m
+
+ - 200m = 200 millipu (or 200 microcores)
+ - 200m = 0.2, which is 20% of a CPU core of the running Node
+    -- if the node has 2 cores, it is still 20% of a single core.
+
+You can introduce auto-scaling at 50% of the CPU usage (which is 100m)
+
+Horizontal POD Autoscaling will increase/descrease pods to maintain a target
+CPU utilization of 50% (or 100m ~ 10% of core within this pod)
+
+add to container spec
+
+resources:
+ reqeusts:
+   cpu: 200m
+
+must deploy a HorizontalPodAutoscaler
+
+DEMO
+====
+
+cat autoscaling/hpa-example.yml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: hpa-example
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: hpa-example
+    spec:
+      containers:
+      - name: hpa-example
+        image: gcr.io/google_containers/hpa-example
+        ports:
+        - name: http-port
+          containerPort: 80
+        resources:
+          requests:
+            cpu: 200m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hpa-example
+spec:
+  ports:
+  - port: 31001
+    nodePort: 31001
+    targetPort: http-port
+    protocol: TCP
+  selector:
+    app: hpa-example
+  type: NodePort
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-example-autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: hpa-example
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 50
+
+kubectl create -f  autoscaling/hpa-example.yml
+
+deployment "hpa-example" created
+service "hpa-example" created
+horizontalpodautoscaler "hpa-example-autoscaler" created
+
+
+kubectl get hpa
+NAME                     REFERENCE                TARGETS           MINPODS   MAXPODS   REPLICAS   AGE
+hpa-example-autoscaler   Deployment/hpa-example   <unknown> / 50%   1         10        3          1m
+
+
+
+
+
+
+..........
