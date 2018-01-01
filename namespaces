@@ -1,0 +1,307 @@
+Namesspaces
+
+Namespaces allow you create virtual clusters with the same physical cluster.
+
+Namespaces logically separates your cluster.
+
+The standard namespace is called default - that is where all
+resources are launched by default unless otherwise specified in the object
+
+ - kube-system houses the Web Ui Dashboard, The DNS addon, the monitoring
+
+Namespaces are intended when you have multiple teams/ project using the Kube
+cluster.
+
+The name of resources meed to be unique within a namespace, but not across namespaces
+ - You can have the deployment "helloworld" multiple times in different namespaces
+    but not twice in the same namespace
+Can divide resources of a Kube cluster using namespaces.
+ - you can limit resources on a per namespace basis
+  -- e.g. marketing team can only use 10 GiB of memory, 2 loadbalancers, 2 cpu cores etc.
+
+First you need to create the namespace:
+
+kubectl create namespace myspace
+
+List namespaces:
+
+kubectl get namespaces
+
+Sett he default namespace to launch resources in:
+
+export CONTEXT=$(kubectl config view | awk'/current-context/ {print $2}')
+kubectl config set-context $CONTEXT --namespace=myspace
+
+
+Can then create resource limits within that namespace:
+using the resourceQuota object.
+
+DEFAUT LIMITS are the preferred method to limit resources that way the pod or container
+specs will use what is set by the namespace and won't be limited by an error in the
+assumptions of the developer(s)...
+
+DEMO
+====
+
+ls resourcequotas/
+defaults.yml			helloworld-no-quotas.yml	helloworld-with-quotas.yml	resourcequota.yml
+
+ cat resourcequotas/resourcequota.yml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myspace
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: myspace
+spec:
+  hard:
+    requests.cpu: "1"
+    requests.memory: 1Gi
+    limits.cpu: "2"
+    limits.memory: 2Gi
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: object-quota
+  namespace: myspace
+spec:
+  hard:
+    configmaps: "10"
+    persistentvolumeclaims: "4"
+    replicationcontrollers: "20"
+    secrets: "10"
+    services: "10"
+    services.loadbalancers: "2"
+
+
+kubectl create -f resourcequotas/resourcequota.yml
+namespace "myspace" created
+resourcequota "compute-quota" created
+resourcequota "object-quota" created
+
+cat resourcequotas/helloworld-no-quotas.yml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-deployment
+  namespace: myspace
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - name: k8s-demo
+        image: wardviaene/k8s-demo
+        ports:
+        - name: nodejs-port
+          containerPort: 3000
+
+
+kubectl get deploy --namespace=myspace
+NAME                    DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+helloworld-deployment   3         0         0            0           20s
+
+Why this isnt working... debug.
+
+kubectl get rs --namespace=myspace
+NAME                               DESIRED   CURRENT   READY     AGE
+helloworld-deployment-57949f6b74   3         0         0         2m
+Jamess-MBP-2:kubernetes-course JeepGuy$ kubectl get describe --namespace=myspace
+
+kubectl get describe --namespace=myspace
+the server doesn't have a resource type "describe"
+Jamess-MBP-2:kubernetes-course JeepGuy$ kubectl describe rs --namespace=myspace
+
+
+Name:           helloworld-deployment-57949f6b74
+Namespace:      myspace
+Selector:       app=helloworld,pod-template-hash=1350592630
+Labels:         app=helloworld
+                pod-template-hash=1350592630
+Annotations:    deployment.kubernetes.io/desired-replicas=3
+                deployment.kubernetes.io/max-replicas=4
+                deployment.kubernetes.io/revision=1
+Controlled By:  Deployment/helloworld-deployment
+Replicas:       0 current / 3 desired
+Pods Status:    0 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=helloworld
+           pod-template-hash=1350592630
+  Containers:
+   k8s-demo:
+    Image:        wardviaene/k8s-demo
+    Port:         3000/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type             Status  Reason
+  ----             ------  ------
+  ReplicaFailure   True    FailedCreate
+Events:
+  Type     Reason        Age                From                   Message
+  ----     ------        ----               ----                   -------
+  Warning  FailedCreate  36s (x16 over 3m)  replicaset-controller
+
+  Error creating: pods "helloworld-deployment-57949f6b74-" is forbidden:
+  failed quota: compute-quota: must specify limits.cpu,limits.memory,requests.cpu,requests.memory
+
+  failed to supply the required quotas.
+
+kubectl delete deploy/helloworld-deployment --namespace=myspace
+deployment "helloworld-deployment" deleted
+
+
+cat resourcequotas/helloworld-with-quotas.yml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-deployment
+  namespace: myspace
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - name: k8s-demo
+        image: wardviaene/k8s-demo
+        ports:
+        - name: nodejs-port
+          containerPort: 3000
+        resources:
+          requests:
+            cpu: 200m
+            memory: 0.5Gi
+          limits:
+            cpu: 400m
+            memory: 1Gi
+
+kubectl create -f resourcequotas/helloworld-with-quotas.yml --namespace=myspace
+deployment "helloworld-deployment" created
+
+
+NAME                             READY     STATUS    RESTARTS   AGE
+echoheaders-bx5s4                1/1       Running   0          23h
+nginx-ingress-controller-vxjht   1/1       Running   0          23h
+
+kubectl get pods --namespace=myspace
+NAME                                     READY     STATUS    RESTARTS   AGE
+helloworld-deployment-69458b4487-4jlkh   1/1       Running   0          49s
+helloworld-deployment-69458b4487-bw4g5   1/1       Running   0          49s
+
+kubectl get rs --namespace=myspace
+NAME                               DESIRED   CURRENT   READY     AGE
+helloworld-deployment-69458b4487   3         2         2         8m
+
+
+kubectl describe rs/helloworld-deployment-69458b4487 --namespace=myspace
+
+Events:
+  Type     Reason            Age                From                   Message
+  ----     ------            ----               ----                   -------
+  Normal   SuccessfulCreate  10m                replicaset-controller  Created pod: helloworld-deployment-69458b4487-4jlkh
+  Normal   SuccessfulCreate  10m                replicaset-controller  Created pod: helloworld-deployment-69458b4487-bw4g5
+  Warning  FailedCreate      5m (x17 over 10m)  replicaset-controller  Error creating: pods
+  "helloworld-deployment-69458b4487-" is forbidden: exceeded quota:
+  compute-quota, requested: limits.memory=1Gi,requests.memory=512Mi,
+  used: limits.memory=2Gi,requests.memory=1Gi, limited: limits.memory=2Gi,requests.memory=1Gi
+
+kubectl get quota --namespace=myspace
+NAME            AGE
+compute-quota   20m
+object-quota    20m
+
+
+kubectl describe quota/compute-quota --namespace=myspace
+Name:            compute-quota
+Namespace:       myspace
+Resource         Used  Hard
+--------         ----  ----
+limits.cpu       800m  2
+limits.memory    2Gi   2Gi
+requests.cpu     400m  1
+requests.memory  1Gi   1Gi
+
+The limits.memory and cpu are already maxxed out.
+
+kubectl delete deploy/helloworld-deployment --namespace=myspace
+deployment "helloworld-deployment" deleted
+
+DEFAULTS
+========
+
+instead of putting resource quotas inside the pod we can create defaults limits.
+
+cat resourcequotas/defaults.yml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limits
+  namespace: myspace
+spec:
+  limits:
+  - default:
+      cpu: 200m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 256Mi
+    type: Container
+
+create the limits in the cluster
+
+kubectl create -f resourcequotas/defaults.yml
+limitrange "limits" created
+Jamess-MBP-2:kubernetes-course JeepGuy$ kubectl describe limits mylimits --namespace=myspace
+Error from server (NotFound): limitranges "mylimits" not found
+
+kubectl describe limits limits --namespace=myspace
+Name:       limits
+Namespace:  myspace
+Type        Resource  Min  Max  Default Request  Default Limit  Max Limit/Request Ratio
+----        --------  ---  ---  ---------------  -------------  -----------------------
+Container   memory    -    -    256Mi            512Mi          -
+Container   cpu       -    -    100m             200m           -
+
+NOW we can create the deployment without quotas in the definition and it will
+use the default limits..
+
+kubectl get pods --namespace=myspace
+NAME                                     READY     STATUS    RESTARTS   AGE
+helloworld-deployment-57949f6b74-6jt5w   1/1       Running   0          1m
+helloworld-deployment-57949f6b74-h8s2z   1/1       Running   0          1m
+helloworld-deployment-57949f6b74-kvqsv   1/1       Running   0          1m
+
+Now the deployment is using all these lower limits therefore all the pods can be
+deployed...
+
+DEFAUT LIMITS are the preferred method to limit resources that way the pod and container
+specs will use what is set by the admin...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+......
