@@ -1,0 +1,58 @@
+Networking
+
+Approach is much different than a default Docker set up.
+
+Container to container communication with a pod
+  - via localhost and the port number
+
+Pod-to-Service communication
+  - using NodePort, using DNS
+     -- using DNS discovery, using the cluster IP
+
+External to service
+ - LoadBalancer, (ingress controller is a example)
+  or just the NodePort
+
+In k8s the pod should always be routable.
+-----------------------------------------
+ - This is pod to pod communication
+ Kubernetes assumes that pods should be ale to communicate to other pods
+ , regardless ow which node they are running.
+
+  - Every pod has its own IP Address.
+  - Pods on different nodes need to be able to communicate to each other using those IP Addresses.
+     -- This is implemented differently depending on your networking set up
+
+
+ On AWS it is kubenet netowkring (kops default)
+     - Every pods can get an IP that is routable using the AWS Virtual Private Network
+     aka the VPC
+
+      The kubernater allocates a /24 subnet to each Node
+         (which is 254 IP Addresses)
+
+         This subnet is added to the VPCs route table (using the SDK).
+
+         There are a limit of 50 entries, which means you can't have more
+         than 50 nodes in a single AWS Cluster.
+          - Although AWS can raise this limit, there might be performance
+            implications.
+
+  Not every Cloud provider has VPC-technology
+    Although Azure, Gce (Google) so...
+
+ For other cloud providers or even on premise (private clouds)
+  there are alternatives available..
+
+  - Container Network Interface (CNI)
+    -- Software the procides libraries/plugins for network interfaces within containers
+    -- Popular solutions are Calico, Weave (standalone or with CNI)
+
+ - Overlay networks    - FLANNEL
+
+   Within one node you still need more ips addresses...
+     -- Flannel will create the fake network.
+
+
+
+.....
