@@ -1,0 +1,80 @@
+Node maintenance
+
+The Node Controller is responsible for managing the Node Objects
+
+ - It assigns IP space the to the node when a new node is launched
+
+ - It keeps the node list up to date with the available machines
+
+ - The node controller is also monitoring the helath of the node.
+    -- If a node is unhealthy it get deleted.
+    -- Pods running on the unhealthy node will then get rescheduled.
+
+When adding a new node the kubelet will attempt to gerister itself
+ - this is call self-registration and the default behavior.
+
+ - Allows you to easily add more nodes to the cluster without making
+   API changes yourself
+
+- A new node object iautomatically created with:
+
+  - The metadat (name: Ip or hostname)
+  - Laels (e.g. cloud region availability zone - instance size)
+
+- A node has a node condition (e.g. ready, out of disk, etc.)
+
+Decommission a node must be done gracefully,
+ - you want K8s to move the pods etc to another node first.
+ -- therefore you drain a node before you shit it down or take it out
+    of the cluster.
+
+kubectl drain node_name --grace-period=600 (miliseconds)
+
+If the node runs pods not managed by the controller, but is a single pod:
+
+  Kubectl drain nodeName --force
+
+DEMO
+====
+
+Drain a node.
+
+kubectl get nodes
+NAME       STATUS    ROLES     AGE       VERSION
+minikube   Ready     <none>    49d       v1.8.0
+
+ kubectl get pods
+NAME                             READY     STATUS    RESTARTS   AGE
+echoheaders-bx5s4                1/1       Running   0          1d
+nginx-ingress-controller-vxjht   1/1       Running   0          1d
+
+
+kubectl drain minikube
+node "minikube" cordoned
+error: pods not managed by ReplicationController, ReplicaSet, Job, DaemonSet or StatefulSet (use --force to override): kube-addon-manager-minikube
+
+kubectl drain minikube --force
+node "minikube" already cordoned
+WARNING: Deleting pods not managed by ReplicationController, ReplicaSet, Job, DaemonSet or StatefulSet: kube-addon-manager-minikube
+
+kubectl get node
+NAME       STATUS                     ROLES     AGE       VERSION
+minikube   Ready,SchedulingDisabled   <none>    49d       v1.8.0
+
+kubectl get pods
+NAME                             READY     STATUS        RESTARTS   AGE
+echoheaders-bx5s4                0/1       Terminating   0          1d
+echoheaders-qhv9c                0/1       Pending       0          1m
+nginx-ingress-controller-gvjs5   0/1       Pending       0          1m
+nginx-ingress-controller-vxjht   0/1       Terminating   0          1d
+
+
+
+
+
+
+
+
+
+
+....
