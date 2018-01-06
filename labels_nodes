@@ -28,6 +28,10 @@ Can use labels to tag nodes
 Once nodes are tagged, you can use label selectors to allow pods to only run
  on specific nodes:
 
+SHOW LABELS: Nodes
+------------------
+kubectl get nodes --show-labels
+
  First- tag the nodes - add a label (tag) or multiple labels to your nodes:
 
    kubectl label nodes node1 hardware-high-spec
