@@ -31,6 +31,9 @@ kubectl exec <pod_name> -- command
                 node_modules
                 package.json
 
+
+kubectl get nodes --show-labels
+
 TEST for data persistence:
 ==========================
 kubectl exec nodehelloworld.example.com -- touch /app/test.txt
