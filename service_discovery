@@ -89,6 +89,7 @@ containers:
           name: helloworld-secrets
           key: database
 
+# ***************************************************************************S
 cat service-discovery/database-service.yml
 
 apiVersion: v1
