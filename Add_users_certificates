@@ -5,7 +5,7 @@ Optional: ssh into your cluster. If not then copy the keys to the master node.
 1. Create a new key and certificate for your user.
   sudo openssl req -new -key myuser.pem -out myuser-csr.pem -subj "/CN=myuser/O=myteam/"
               cn myuser is username, and myteam is the group
-2. Create a new certicate from the .pem that is signed by your certificate authority.
+2. Create a new certificate from the .pem that is signed by your certificate authority.
    sudo openssl x509 -req -in myuser-csr.pem -CA /path/to/kubernetes/ca.crt
                -CAkey /path/to/kubernetes/ca.key -CAcreateserial -out myuser.crt -days 10000
 3. Cat the certificate files

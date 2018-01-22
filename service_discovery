@@ -2,9 +2,9 @@ DNS
 
 as of 1.3 DNS is a built in service and is launched automatically using the addon manager.
 
-  - The addon are int he /etc/kubernetes/addons directory on the master node.
+  - The addons are int he /etc/kubernetes/addons directory on the master node.
 
-The DNS servcie can be used within pods to find other services running on the same cluster.
+The DNS service can be used within pods to find other services running on the same cluster.
 
 Multiple containers within 1 pod don't need this service, as they can contact each other directly.
 
@@ -24,7 +24,7 @@ host app1 service
  - will return the ip addr
 
  host app2 service
-  - will return the ip addr of the second pod/conatiner/app.
+  - will return the ip addr of the second pod/container/app.
 
 If in a different namespace.
 

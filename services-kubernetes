@@ -26,7 +26,7 @@ settings in the kube-apiservicer init scripts by adding
 
 Can use DNS names
  - ExternalName can provide a DNS name for the service
- - The only works when the DNS add-n is enabled
+ - The only works when the DNS add-on is enabled
 ====================
  apiVersion: v1
  kind: Service
@@ -56,7 +56,7 @@ spec:
   - name: k8s-demo
     image: wardviaene/k8s-demo
     ports:
-    - name: nodejs-port        ### mathes the targetPort in the service object
+    - name: nodejs-port        ### matches the targetPort in the service object
       containerPort: 3000
 ==================
 
