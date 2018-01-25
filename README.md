@@ -10,7 +10,7 @@ The Advanced K8s class notes are in progress in the repo:
 https://github.com/JeepGuy/k8s_Advanced
 
 Below data was added due to a great suggestion by: Vikas Gubbi.
-===============================================================
+--------------------------------------------------------------
 
 There is a certification test for Kubernetes now.
 
