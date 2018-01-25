@@ -6,3 +6,12 @@ Found at: https://www.udemy.com/learn-devops-the-complete-kubernetes-course/lear
 ​
 
 Attribution for any material note from the course included in the notes.
+
+The Advanced K8s class notes are in progress in the repro:
+https://github.com/JeepGuy/k8s_Advanced
+
+There is a certification test for Kubernetes now.
+
+Details can be found at: https://www.cncf.io/certification/expert/?utm_source=linco&utm_medium=blog&utm_campaign=kube-cert&utm_content=promo
+
+And the curriculum is at: https://github.com/cncf/curriculum
