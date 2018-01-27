@@ -20,8 +20,7 @@ docker login (for image repo)
 
 wardviaene is his login in the pod definition
 
-jeepguy
-Jimsdockerhubacct1!
+
 Docker Pull Command:  docker pull jeepguy/kubernetes1course
 
 docker images   - list local
