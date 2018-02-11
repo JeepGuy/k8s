@@ -1,0 +1,68 @@
+
+kubernetes comes with the web ui instead of the kubectl commands.
+
+- Can give you overview of running applications
+- Create and modify individual K8s resources and workloads
+- Retrieve info on the stat of resources (like kubectl descrive pod)
+
+In general you can access the kubernetes Web UI at
+https://<kubernetes-master>/ui
+
+If you cannot access it - you can install  it manually.
+
+kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+
+OUTDATED: kubectl create -f htps://rawgit.com/kubernetes/dashboard/master/src/deploy/kuberenetes-dashboards.yaml - bad address.
+
+
+If it asks for a password:
+you can retrieve the password by entering
+
+kubectl config view
+
+Minikube...
+
+minikube dashboard
+
+if you want the URL
+
+minikube dashboard --url
+
+Getting to the UI in AWS.
+=========================
+
+kubectl cluster-info
+Kubernetes master is running at https://api.kubernetes.jbrent.info
+Elasticsearch is running at https://api.kubernetes.jbrent.info/api/v1/namespaces/kube-system/services/elasticsearch-logging/proxy
+Kibana is running at http://aacc991ed09dc11e8884712963a833af-439274066.us-east-1.elb.amazonaws.com:5601
+KubeDNS is running at https://api.kubernetes.jbrent.info/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+
+
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {
+
+  },
+  "status": "Failure",
+  "message": "Unauthorized",
+  "reason": "Unauthorized",
+  "code": 401
+}
+
+
+kubectl describe svc kubernetes-dashboard --namespace=kube-system
+
+kubectl describe svc kubernetes-dashboard --namespace=kube-system
+Error from server (NotFound): services "kubernetes-dashboard" not found
+
+Must install it manually...
+
+
+
+
+
+
+.........
