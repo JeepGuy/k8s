@@ -6,7 +6,7 @@ Found at: https://www.udemy.com/learn-devops-the-complete-kubernetes-course/lear
 
 Attribution for any material note from the course included in the notes.
 
-The Advanced K8s class notes are in progress in the repo:
+The Advanced K8s class notes are in the repo:
 https://github.com/JeepGuy/k8s_Advanced
 
 Below data was added due to a great suggestion by: Vikas Gubbi.
